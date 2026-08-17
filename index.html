@@ -1,0 +1,1419 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Depth Video Studio — turn any video into depth maps, pose skeletons and 478-point face clouds for AI motion control (Seedance, Kling, Runway). 100% in-browser, no install, no upload.">
+<title>深度视频工作台 · Depth Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23e5793f' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e5793f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#141110; --bg2:#191512; --panel:#1e1915; --panel2:#241e19;
+  --line:rgba(240,230,216,.09); --line2:rgba(240,230,216,.16);
+  --ink:#f0e9dd; --ink-dim:#a99c8c; --ink-faint:#6f6457;
+  --acc:#e5793f; --acc2:#f0a35e; --acc-soft:rgba(229,121,63,.14);
+  --sage:#a8c085; --teal:#7ce0cd; --amber:#ffb547; --err:#e06060;
+  --serif:'Noto Serif SC','Songti SC',serif;
+  --sans:-apple-system,BlinkMacSystemFont,'PingFang SC','HarmonyOS Sans SC','Microsoft YaHei',sans-serif;
+  --mono:'IBM Plex Mono','SF Mono',ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:
+    radial-gradient(1100px 500px at 85% -10%, rgba(229,121,63,.07), transparent 60%),
+    radial-gradient(900px 480px at -10% 30%, rgba(124,224,205,.045), transparent 55%),
+    var(--bg);
+  color:var(--ink); font-family:var(--sans); font-size:14px; line-height:1.6;
+  min-height:100vh;
+}
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; opacity:.05; z-index:999;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
+}
+.frame{max-width:1460px;margin:0 auto;padding:26px 28px 40px}
+
+/* ---------- header ---------- */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:4px 2px 22px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand svg{width:40px;height:40px;flex:none}
+.brand h1{font-family:var(--serif);font-weight:900;font-size:23px;letter-spacing:.04em;line-height:1.2}
+.brand .sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--ink-faint);text-transform:uppercase;margin-top:2px}
+.hud{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11.5px;
+  padding:5px 11px;border:1px solid var(--line2);border-radius:999px;color:var(--ink-dim);
+  background:rgba(0,0,0,.18);cursor:default;transition:border-color .2s;
+}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+.chip[data-status="loading"] i{background:var(--amber);animation:pulse 1.1s infinite}
+.chip[data-status="ok"] i{background:var(--sage);box-shadow:0 0 8px rgba(168,192,133,.8)}
+.chip[data-status="fail"]{border-color:rgba(224,96,96,.5);color:var(--err);cursor:pointer}
+.chip[data-status="fail"] i{background:var(--err)}
+@keyframes pulse{50%{opacity:.25}}
+.iconbtn{
+  min-width:32px;height:32px;border-radius:8px;border:1px solid var(--line2);background:rgba(0,0,0,.18);
+  color:var(--ink-dim);cursor:pointer;display:grid;place-items:center;transition:.2s;
+  font-family:var(--mono);font-size:12px;font-weight:600;padding:0 10px;
+}
+.iconbtn:hover{color:var(--ink);border-color:var(--acc)}
+.iconbtn svg{width:16px;height:16px}
+
+/* ---------- layout ---------- */
+main{display:grid;grid-template-columns:362px 1fr;gap:18px;align-items:start}
+.rail,.work{display:flex;flex-direction:column;gap:18px;min-width:0}
+.card{
+  background:linear-gradient(180deg,var(--panel) 0%,var(--bg2) 100%);
+  border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;position:relative;
+}
+.card>h2{
+  font-family:var(--serif);font-weight:600;font-size:15.5px;letter-spacing:.06em;
+  display:flex;align-items:baseline;gap:10px;margin-bottom:14px;
+}
+.card>h2 b{font-family:var(--mono);font-weight:600;font-size:11px;color:var(--acc);letter-spacing:.1em}
+.card>h2 span{font-family:var(--mono);font-weight:400;font-size:10.5px;color:var(--ink-faint);letter-spacing:.12em;margin-left:auto}
+
+/* ---------- source card ---------- */
+.drop{
+  border:1.5px dashed var(--line2);border-radius:12px;padding:30px 18px;text-align:center;
+  cursor:pointer;transition:.2s;background:rgba(0,0,0,.14);
+}
+.drop:hover,.drop.over{border-color:var(--acc);background:var(--acc-soft)}
+.drop svg{width:34px;height:34px;color:var(--ink-faint);margin-bottom:10px}
+.drop.over svg{color:var(--acc)}
+.drop .d1{font-size:14px;color:var(--ink)}
+.drop .d2{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:5px;letter-spacing:.05em}
+.filebar{display:none;border:1px solid var(--line2);border-radius:12px;background:rgba(0,0,0,.16);padding:14px 15px}
+.filebar .fname{font-size:13.5px;font-weight:600;word-break:break-all;display:flex;gap:8px;align-items:flex-start}
+.filebar .fname .okdot{color:var(--sage);flex:none;font-family:var(--mono)}
+dl.meta{margin-top:10px;border-top:1px dashed var(--line);padding-top:9px;display:grid;grid-template-columns:auto 1fr;gap:3px 14px}
+dl.meta dt{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.08em;padding-top:2px}
+dl.meta dd{font-family:var(--mono);font-size:12px;color:var(--ink-dim);text-align:right;word-break:break-all}
+dl.meta dd b{color:var(--ink);font-weight:500}
+.filebar .row{display:flex;gap:10px;margin-top:12px}
+.btn{
+  font-family:var(--sans);font-size:13px;border-radius:9px;padding:8px 16px;cursor:pointer;
+  border:1px solid var(--line2);background:rgba(0,0,0,.2);color:var(--ink-dim);transition:.18s;
+}
+.btn:hover{color:var(--ink);border-color:var(--acc)}
+.btn.small{padding:6px 12px;font-size:12px}
+
+/* ---------- params ---------- */
+.field{margin-bottom:13px}
+.field:last-of-type{margin-bottom:0}
+.field label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-dim);margin-bottom:6px}
+.field label i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+select{
+  width:100%;appearance:none;background:rgba(0,0,0,.28);color:var(--ink);border:1px solid var(--line2);
+  border-radius:9px;padding:8px 12px;font-family:var(--mono);font-size:12.5px;cursor:pointer;outline:none;
+}
+select:focus{border-color:var(--acc)}
+.hint{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);line-height:1.7;margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+
+/* ---------- run ---------- */
+.phase{margin-bottom:14px}
+.phHead{display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-dim);margin-bottom:6px}
+.phHead b{font-family:var(--mono);font-weight:500;font-size:11.5px;color:var(--ink-faint)}
+.phase.active .phHead b{color:var(--acc2)}
+.phase.done .phHead b{color:var(--sage)}
+.bar{height:6px;border-radius:99px;background:rgba(0,0,0,.35);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--acc),var(--acc2));transition:width .25s}
+.phase.active .bar i{background-size:200% 100%;animation:shimmer 1.2s linear infinite;box-shadow:0 0 12px rgba(229,121,63,.45)}
+@keyframes shimmer{to{background-position:-200% 0}}
+.bigbtn{
+  width:100%;margin-top:4px;border:none;border-radius:11px;padding:13px 0;cursor:pointer;
+  font-family:var(--sans);font-size:15.5px;font-weight:700;letter-spacing:.14em;
+  background:linear-gradient(135deg,var(--acc),#f08c4d 70%,var(--acc2));color:#1c130c;
+  box-shadow:0 6px 20px rgba(229,121,63,.28), inset 0 1px 0 rgba(255,255,255,.25);
+  transition:.18s;
+}
+.bigbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 10px 26px rgba(229,121,63,.4)}
+.bigbtn:disabled{filter:grayscale(.85);opacity:.5;cursor:not-allowed;box-shadow:none}
+.cancelbtn{
+  width:100%;margin-top:10px;display:none;border:1px solid rgba(224,96,96,.45);border-radius:10px;
+  background:rgba(224,96,96,.08);color:var(--err);padding:9px 0;font-size:13px;letter-spacing:.1em;cursor:pointer;
+}
+.cancelbtn:hover{background:rgba(224,96,96,.16)}
+.stats{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.stats div{background:rgba(0,0,0,.2);border:1px solid var(--line);border-radius:9px;padding:8px 11px}
+.stats dt{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:.1em}
+.stats dd{font-family:var(--mono);font-size:13px;color:var(--ink);margin-top:2px}
+.cachehint{display:none;margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--sage)}
+
+/* ---------- modes ---------- */
+.modes{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.mode{
+  position:relative;text-align:left;border:1px solid var(--line2);border-radius:12px;cursor:pointer;
+  background:rgba(0,0,0,.18);padding:14px 13px 15px;color:var(--ink-dim);transition:.18s;font-family:var(--sans);
+}
+.mode:hover{transform:translateY(-2px);border-color:var(--acc);color:var(--ink)}
+.mode[data-ready="0"]{opacity:.38;pointer-events:none}
+.mode .micon{display:block;width:30px;height:30px;color:var(--ink-faint);margin-bottom:10px;transition:.18s}
+.mode:hover .micon{color:var(--acc2)}
+.mode .mtitle{display:block;font-size:13.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+.mode .mdesc{display:block;font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:4px;letter-spacing:.03em;line-height:1.55}
+.mode .mcheck{
+  position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:10px;color:#1c130c;
+  background:var(--acc);border-radius:99px;padding:2px 8px;opacity:0;transform:scale(.8);transition:.18s;letter-spacing:.05em;
+}
+.mode.sel{border-color:var(--acc);background:var(--acc-soft);box-shadow:0 0 0 1px var(--acc), 0 8px 24px rgba(229,121,63,.15)}
+.mode.sel .micon{color:var(--acc)}
+.mode.sel .mcheck{opacity:1;transform:scale(1)}
+
+/* ---------- stage ---------- */
+.stageCard>h2 #stageBadge{margin-left:auto}
+.stage{
+  position:relative;background:#0b0908;border:1px solid var(--line);border-radius:12px;
+  min-height:340px;display:grid;place-items:center;overflow:hidden;padding:14px;
+}
+.stage::before{
+  content:"";position:absolute;inset:12px;pointer-events:none;opacity:.5;
+  background:
+    repeating-linear-gradient(0deg,transparent 0 46px,rgba(240,230,216,.028) 46px 47px),
+    repeating-linear-gradient(90deg,transparent 0 46px,rgba(240,230,216,.028) 46px 47px);
+}
+.corner{position:absolute;width:20px;height:20px;border:2px solid var(--acc);opacity:.85;z-index:3;pointer-events:none}
+.corner.tl{top:9px;left:9px;border-right:none;border-bottom:none}
+.corner.tr{top:9px;right:9px;border-left:none;border-bottom:none}
+.corner.bl{bottom:9px;left:9px;border-right:none;border-top:none}
+.corner.br{bottom:9px;right:9px;border-left:none;border-top:none}
+.stage video,.stage canvas{max-width:100%;max-height:58vh;border-radius:4px;position:relative;z-index:2}
+#outCanvas{display:none;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+#vid{display:none;background:#000}
+.stageEmpty{position:relative;z-index:2;text-align:center;color:var(--ink-faint);padding:30px 20px;cursor:pointer}
+.stageEmpty svg{width:52px;height:52px;margin-bottom:14px;opacity:.5}
+.stageEmpty p{font-family:var(--serif);font-size:16px;color:var(--ink-dim);letter-spacing:.1em}
+.stageEmpty span{display:block;font-family:var(--mono);font-size:11px;margin-top:8px;letter-spacing:.08em}
+#liveBadge{
+  position:absolute;top:18px;left:18px;z-index:5;display:none;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#1c130c;
+  background:var(--acc);padding:4px 12px;border-radius:99px;font-weight:600;box-shadow:0 2px 14px rgba(229,121,63,.5);
+}
+#liveBadge::before{content:"";width:7px;height:7px;border-radius:50%;background:#1c130c;animation:pulse 1s infinite}
+
+/* ---------- output ---------- */
+#outCard video{width:100%;max-height:52vh;border-radius:10px;background:#000;border:1px solid var(--line2)}
+.outrow{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.dlbtn{
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  background:linear-gradient(135deg,var(--acc),var(--acc2));color:#1c130c;font-weight:700;font-size:14px;
+  padding:10px 22px;border-radius:10px;letter-spacing:.08em;transition:.18s;
+  box-shadow:0 6px 18px rgba(229,121,63,.3);
+}
+.dlbtn:hover{transform:translateY(-1px);box-shadow:0 9px 24px rgba(229,121,63,.42)}
+.dlbtn svg{width:15px;height:15px}
+#outMeta{font-family:var(--mono);font-size:11.5px;color:var(--ink-dim);letter-spacing:.03em}
+
+/* ---------- console ---------- */
+.consoleCard{margin-top:18px}
+.consoleCard>h2{margin-bottom:10px}
+.log{
+  font-family:var(--mono);font-size:11.5px;line-height:1.85;height:190px;overflow-y:auto;
+  background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 14px;
+}
+.log .ln{color:var(--ink-dim);white-space:pre-wrap;word-break:break-all}
+.log .ln .t{color:var(--ink-faint);margin-right:10px}
+.log .ln.ok{color:var(--sage)}
+.log .ln.warn{color:var(--amber)}
+.log .ln.err{color:var(--err)}
+.log .ln.dim{color:var(--ink-faint)}
+.log::-webkit-scrollbar{width:8px}
+.log::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+footer{
+  margin-top:22px;padding-top:16px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.08em;
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+}
+
+/* ---------- popover ---------- */
+#settings{
+  position:fixed;top:74px;right:28px;z-index:100;width:290px;display:none;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:13px;padding:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.55);
+}
+#settings.open{display:block;animation:pop .18s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-6px)}}
+#settings h3{font-family:var(--serif);font-size:14px;font-weight:600;margin-bottom:10px}
+#settings label{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-dim);padding:5px 2px;cursor:pointer}
+#settings label input{accent-color:var(--acc)}
+#settings p{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:10px;line-height:1.7}
+#settings .btn{width:100%;margin-top:12px}
+
+@media (max-width:1120px){
+  main{grid-template-columns:1fr}
+  .modes{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+}
+@media (max-width:640px){
+  .frame{padding:16px 14px 30px}
+  header{flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 40 40" fill="none">
+      <circle cx="20" cy="20" r="17" stroke="#e5793f" stroke-width="2" opacity=".9"/>
+      <circle cx="20" cy="20" r="10.5" stroke="#a8c085" stroke-width="1.6" opacity=".8"/>
+      <circle cx="20" cy="20" r="4" fill="#e5793f"/>
+      <path d="M20 3v7M20 30v7M3 20h7M30 20h7" stroke="#e5793f" stroke-width="1.6" opacity=".55"/>
+    </svg>
+    <div>
+      <h1 data-i18n="appTitle">深度视频工作台</h1>
+      <div class="sub" data-i18n="appSub">DEPTH VIDEO STUDIO — 本地推理 · 原声导出</div>
+    </div>
+  </div>
+  <div class="hud">
+    <span class="chip" id="chipDepth" data-status="idle" title=""><i></i><span data-i18n="chipDepth">深度模型</span></span>
+    <span class="chip" id="chipPose" data-status="idle" title=""><i></i><span data-i18n="chipPose">姿态模型</span></span>
+    <span class="chip" id="chipFace" data-status="idle" title=""><i></i><span data-i18n="chipFace">面部模型</span></span>
+    <span class="chip" id="chipGpu" data-status="idle" title=""><i></i>GPU</span>
+    <button class="iconbtn" id="btnLang" title="中文 / English">EN</button>
+    <button class="iconbtn" id="btnSettings" title="Settings" aria-label="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.08a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 左栏 ============ -->
+  <aside class="rail">
+    <section class="card">
+      <h2><b>01</b><span data-i18n="cardSource">源视频</span><span>SOURCE</span></h2>
+      <div class="drop" id="drop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+        <div class="d1" data-i18n="drop1">拖拽视频到此处，或点击选择</div>
+        <div class="d2" data-i18n="drop2">MP4 · MOV · WEBM — 短视频为宜</div>
+      </div>
+      <input type="file" id="fileInput" accept="video/*" hidden>
+      <div class="filebar" id="fileBar">
+        <div class="fname"><span class="okdot">●</span><span id="fName"></span></div>
+        <dl class="meta" id="fMeta"></dl>
+        <div class="row"><button class="btn small" id="btnChange" data-i18n="btnChange">更换视频</button></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><b>02</b><span data-i18n="cardParams">转换参数</span><span>PARAMS</span></h2>
+      <div class="field">
+        <label><span data-i18n="lbFps">分析帧率</span><i data-i18n="lbFpsTip">决定骨架/深度流畅度</i></label>
+        <select id="fpsSel">
+          <option value="6" data-i18n="fps6">6 fps — 极速（长视频）</option>
+          <option value="10" data-i18n="fps10">10 fps — 快速</option>
+          <option value="15" data-i18n="fps15">15 fps — 均衡</option>
+          <option value="24" selected data-i18n="fps24">24 fps — 推荐</option>
+          <option value="30" data-i18n="fps30">30 fps — 流畅（较慢）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="lbSm">时序平滑</span><i data-i18n="lbSmTip">抑制深度逐帧抖动</i></label>
+        <select id="smSel">
+          <option value="off" data-i18n="smOff">关闭（逐帧原始深度）</option>
+          <option value="light" selected data-i18n="smLight">轻度（推荐 · 动作控制更稳）</option>
+          <option value="strong" data-i18n="smStrong">强度（最平滑）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="lbCmap">深度渲染</span><i data-i18n="lbCmapTip">灰度 或 熔岩伪彩</i></label>
+        <select id="cmapSel">
+          <option value="gray" selected data-i18n="cmapGray">灰度深度图（原始规格）</option>
+          <option value="inferno" data-i18n="cmapInferno">熔岩伪彩（对比更强）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="lbPbg">姿态背景</span><i data-i18n="lbPbgTip">动作控制可选黑底</i></label>
+        <select id="pbgSel">
+          <option value="video" selected data-i18n="pbgVideo">原视频叠加</option>
+          <option value="black" data-i18n="pbgBlack">纯黑骨架（控制视频格式）</option>
+        </select>
+      </div>
+      <div class="field">
+        <label><span data-i18n="lbBr">输出码率</span><i data-i18n="lbBrTip">画质与体积</i></label>
+        <select id="brSel">
+          <option value="4" data-i18n="br4">4 Mbps — 轻量</option>
+          <option value="8" selected data-i18n="br8">8 Mbps — 推荐</option>
+          <option value="16" data-i18n="br16">16 Mbps — 高清</option>
+        </select>
+      </div>
+      <div class="hint" data-i18n="paramHint">转换在浏览器本地完成，导出自动保留原声。</div>
+    </section>
+
+    <section class="card">
+      <h2><b>03</b><span data-i18n="cardRun">执行</span><span>RUN</span></h2>
+      <div class="phase" id="ph1">
+        <div class="phHead"><span data-i18n="phase1">① 逐帧分析</span><b id="ph1Txt">待机</b></div>
+        <div class="bar"><i id="ph1Bar"></i></div>
+      </div>
+      <div class="phase" id="ph2">
+        <div class="phHead"><span data-i18n="phase2">② 合成导出（含原声）</span><b id="ph2Txt">待机</b></div>
+        <div class="bar"><i id="ph2Bar"></i></div>
+      </div>
+      <button class="bigbtn" id="btnStart" disabled data-i18n="btnPickFirst">请先选择视频</button>
+      <button class="cancelbtn" id="btnCancel" data-i18n="btnCancel">取消转换</button>
+      <div class="cachehint" id="cacheHint" data-i18n="cacheHint">✓ 本视频已有分析缓存 — 切换模式重跑可跳过分析</div>
+      <dl class="stats" id="stats">
+        <div><dt data-i18n="stFrames">分析帧数</dt><dd id="stFrames">—</dd></div>
+        <div><dt data-i18n="stAT">分析用时</dt><dd id="stAT">—</dd></div>
+        <div><dt data-i18n="stCT">合成用时</dt><dd id="stCT">—</dd></div>
+        <div><dt data-i18n="stSize">输出体积</dt><dd id="stSize">—</dd></div>
+      </dl>
+    </section>
+  </aside>
+
+  <!-- ============ 右栏 ============ -->
+  <section class="work">
+    <section class="card">
+      <h2><span data-i18n="cardModes">转换模式</span><span data-i18n="modesTip">MODE · 单选</span></h2>
+      <div class="modes" id="modes">
+        <button class="mode sel" data-mode="depth" type="button">
+          <span class="mcheck" data-i18n="mSel">已选</span>
+          <svg class="micon" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 20l6-9 4.5 6.5L17 13l6 7H3z" stroke-linejoin="round"/><path d="M3 24h24" opacity=".4"/><circle cx="21.5" cy="7" r="2.5" opacity=".4"/><path d="M3 20l6-9 4.5 6.5L17 13l6 7" stroke-linejoin="round" opacity=".55" transform="translate(0,-8)"/></svg>
+          <span class="mtitle" data-i18n="m1t">灰度深度图</span>
+          <span class="mdesc" data-i18n="m1d">DEPTH ANYTHING V2<br>单目深度 · 近亮远暗</span>
+        </button>
+        <button class="mode" data-mode="pose" type="button">
+          <span class="mcheck" data-i18n="mSel">已选</span>
+          <svg class="micon" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="15" cy="6" r="3"/><path d="M15 9v8m0 0l-5 9m5-9l5 9M6 13l9-2 9 2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="mtitle" data-i18n="m2t">姿态骨架叠加</span>
+          <span class="mdesc" data-i18n="m2d">MEDIAPIPE POSE<br>33 关键点 · 训练画面</span>
+        </button>
+        <button class="mode" data-mode="depth_pose" type="button">
+          <span class="mcheck" data-i18n="mSel">已选</span>
+          <svg class="micon" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 22l6-9 4.5 6.5L17 15l7 7H3z" stroke-linejoin="round"/><circle cx="15" cy="5.5" r="2.2"/><path d="M15 8v5m0 0l-3.5 6m3.5-6l3.5 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="mtitle" data-i18n="m3t">深度 + 姿态</span>
+          <span class="mdesc" data-i18n="m3d">DEPTH × POSE<br>组合视图</span>
+        </button>
+        <button class="mode" data-mode="face" type="button">
+          <span class="mcheck" data-i18n="mSel">已选</span>
+          <svg class="micon" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M15 3C8.4 3 4 8 4 14.5S9.2 27 15 27s11-6 11-12.5S21.6 3 15 3z" stroke-linejoin="round"/><g fill="currentColor" stroke="none" opacity=".85"><circle cx="10.5" cy="12.5" r="1"/><circle cx="14.5" cy="10.5" r="1"/><circle cx="19" cy="12.5" r="1"/><circle cx="8.5" cy="17.5" r="1"/><circle cx="12.5" cy="17" r="1"/><circle cx="16.5" cy="17" r="1"/><circle cx="20.5" cy="17.5" r="1"/><circle cx="10.5" cy="22" r="1"/><circle cx="15" cy="21.5" r="1"/><circle cx="19.5" cy="22" r="1"/><circle cx="14.5" cy="14" r="1"/><circle cx="16.8" cy="13.6" r=".8"/><circle cx="15.4" cy="11.6" r=".7"/><circle cx="13.2" cy="12" r=".8"/></g></svg>
+          <span class="mtitle" data-i18n="m4t">面部 478 点云</span>
+          <span class="mdesc" data-i18n="m4d">FACE LANDMARKER<br>478 点 · 含虹膜</span>
+        </button>
+        <button class="mode" data-mode="all" type="button">
+          <span class="mcheck" data-i18n="mSel">已选</span>
+          <svg class="micon" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l11 5.5L15 15 4 9.5 15 4z" stroke-linejoin="round"/><path d="M4 15l11 5.5L26 15M4 20.5L15 26l11-5.5" stroke-linejoin="round" opacity=".55"/></svg>
+          <span class="mtitle" data-i18n="m5t">全部叠加</span>
+          <span class="mdesc" data-i18n="m5d">DEPTH + POSE<br>+ FACE 全组合</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="card stageCard">
+      <h2><span data-i18n="cardStage">预览舞台</span><span id="stageBadge">STANDBY</span></h2>
+      <div class="stage" id="stage">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="stageEmpty" id="stageEmpty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M10 9.5l5 2.5-5 2.5v-5z" fill="currentColor" stroke="none"/></svg>
+          <p data-i18n="stageEmpty1">等待视频载入</p>
+          <span data-i18n="stageEmpty2">上传后在此实时预览 · 分析逐帧可见</span>
+        </div>
+        <video id="vid" playsinline preload="auto"></video>
+        <canvas id="outCanvas"></canvas>
+        <div id="liveBadge">0%</div>
+      </div>
+    </section>
+
+    <section class="card" id="outCard" hidden>
+      <h2><span data-i18n="cardOut">导出结果</span><span>OUTPUT</span></h2>
+      <video id="resVideo" controls playsinline></video>
+      <div class="outrow">
+        <a class="dlbtn" id="dlBtn" href="#">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 4v11m0 0l-5-5m5 5l5-5M4 20h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span data-i18n="btnDownload">下载视频</span>
+        </a>
+        <span id="outMeta"></span>
+      </div>
+    </section>
+  </section>
+</main>
+
+<section class="card consoleCard">
+  <h2><span data-i18n="cardLog">运行日志</span><span>CONSOLE</span></h2>
+  <div class="log" id="log"></div>
+</section>
+
+<footer>
+  <span data-i18n="footPrivacy">全部推理均在本地浏览器完成 — 视频不会上传到任何服务器</span>
+  <span>DEPTH ANYTHING V2 · MEDIAPIPE · WEBGPU / WASM</span>
+</footer>
+</div>
+
+<div id="settings">
+  <h3 data-i18n="setTitle">设置</h3>
+  <label><input type="radio" name="host" value="auto"> <span data-i18n="setAuto">模型源：自动（HF → 镜像）</span></label>
+  <label><input type="radio" name="host" value="hf"> <span data-i18n="setHf">仅 HuggingFace</span></label>
+  <label><input type="radio" name="host" value="mirror"> <span data-i18n="setMirror">仅 hf-mirror.com（国内加速）</span></label>
+  <p data-i18n="setNote">首次使用需下载模型约 60–70 MB（深度 ≈50MB / 姿态 ≈9MB / 面部 ≈4MB），之后浏览器自动缓存。更改后刷新生效。</p>
+  <button class="btn" id="btnApplyHost" data-i18n="setApply">应用并刷新</button>
+</div>
+
+<script type="module">
+/* ================================================================
+   深度视频工作台 · Depth Video Studio（单文件本地实现）
+   深度: Depth-Anything-V2 (transformers.js, WebGPU/WASM)
+   姿态: MediaPipe PoseLandmarker (33 点)
+   面部: MediaPipe FaceLandmarker (478 点, 含虹膜)
+   导出: Canvas + WebAudio → MediaRecorder（保留原声）
+   ================================================================ */
+const $ = s => document.querySelector(s);
+const qs = new URLSearchParams(location.search);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const raf = () => new Promise(r => requestAnimationFrame(r));
+class Cancelled extends Error { constructor(){ super('cancelled') } }
+
+/* ---------------- i18n ---------------- */
+const I18N = {
+  zh: {
+    appTitle:'深度视频工作台', appSub:'DEPTH VIDEO STUDIO — 本地推理 · 原声导出',
+    chipDepth:'深度模型', chipPose:'姿态模型', chipFace:'面部模型',
+    cardSource:'源视频', cardParams:'转换参数', cardRun:'执行',
+    drop1:'拖拽视频到此处，或点击选择', drop2:'MP4 · MOV · WEBM — 短视频为宜',
+    btnChange:'更换视频',
+    lbFps:'分析帧率', lbFpsTip:'决定骨架/深度流畅度',
+    fps6:'6 fps — 极速（长视频）', fps10:'10 fps — 快速', fps15:'15 fps — 均衡', fps24:'24 fps — 推荐', fps30:'30 fps — 流畅（较慢）',
+    lbSm:'时序平滑', lbSmTip:'抑制深度逐帧抖动',
+    smOff:'关闭（逐帧原始深度）', smLight:'轻度（推荐 · 动作控制更稳）', smStrong:'强度（最平滑）',
+    lbCmap:'深度渲染', lbCmapTip:'灰度 或 熔岩伪彩',
+    cmapGray:'灰度深度图（原始规格）', cmapInferno:'熔岩伪彩（对比更强）',
+    lbPbg:'姿态背景', lbPbgTip:'动作控制可选黑底',
+    pbgVideo:'原视频叠加', pbgBlack:'纯黑骨架（控制视频格式）',
+    lbBr:'输出码率', lbBrTip:'画质与体积',
+    br4:'4 Mbps — 轻量', br8:'8 Mbps — 推荐', br16:'16 Mbps — 高清',
+    paramHint:'转换在浏览器本地完成，导出自动保留原声。',
+    phase1:'① 逐帧分析', phase2:'② 合成导出（含原声）',
+    phIdle:'待机', phActive:'进行中', phDone:'完成',
+    btnPickFirst:'请先选择视频', btnStart:'开始转换', btnRunning:'转换中…', btnWaitModel:'等待{0}模型…',
+    btnCancel:'取消转换',
+    cacheHint:'✓ 本视频已有分析缓存 — 切换模式重跑可跳过分析',
+    stFrames:'分析帧数', stAT:'分析用时', stCT:'合成用时', stSize:'输出体积',
+    cardModes:'转换模式', modesTip:'MODE · 单选', mSel:'已选',
+    m1t:'灰度深度图', m1d:'DEPTH ANYTHING V2<br>单目深度 · 近亮远暗',
+    m2t:'姿态骨架叠加', m2d:'MEDIAPIPE POSE<br>33 关键点 · 训练画面',
+    m3t:'深度 + 姿态', m3d:'DEPTH × POSE<br>组合视图',
+    m4t:'面部 478 点云', m4d:'FACE LANDMARKER<br>478 点 · 含虹膜',
+    m5t:'全部叠加', m5d:'DEPTH + POSE<br>+ FACE 全组合',
+    cardStage:'预览舞台',
+    stageEmpty1:'等待视频载入', stageEmpty2:'上传后在此实时预览 · 分析逐帧可见',
+    cardOut:'导出结果', btnDownload:'下载视频',
+    cardLog:'运行日志', footPrivacy:'全部推理均在本地浏览器完成 — 视频不会上传到任何服务器',
+    setTitle:'设置', setAuto:'模型源：自动（HF → 镜像）', setHf:'仅 HuggingFace', setMirror:'仅 hf-mirror.com（国内加速）',
+    setNote:'首次使用需下载模型约 60–70 MB（深度 ≈50MB / 姿态 ≈9MB / 面部 ≈4MB），之后浏览器自动缓存。更改后刷新生效。',
+    setApply:'应用并刷新',
+    modeDepth:'深度', modePose:'姿态', modeFace:'面部',
+    /* 动态消息 */
+    boot1:'深度视频工作台启动 · 全部推理在本地浏览器完成，视频不会上传',
+    boot2:'五种模式：灰度深度图 / 姿态骨架 / 深度+姿态 / 面部478点云 / 全部叠加 — 导出保留原声',
+    bootReady:'模型准备阶段结束，工作台就绪',
+    noGpu:'未检测到 WebGPU：深度推理将使用 WASM（速度较慢，建议 Chrome/Edge 或降低分析帧率）',
+    gpuNoAdapter:'WebGPU 适配器不可用，深度推理回退 WASM（较慢，可降低分析帧率）',
+    tfFail:'transformers.js 加载失败（{0}）：{1}',
+    tfNone:'无法加载 transformers.js，请检查网络后刷新',
+    fileNoCache:'当前环境（file:// 直开）不支持模型缓存，建议使用本地静态服务（serve.py / start-server）',
+    depthTry:'深度模型初始化：{0}', depthOk:'✓ 深度模型就绪（{0}）', depthFailTry:'尝试失败：{0}',
+    depthFail:'✗ 深度模型加载失败：{0}（点击顶部徽章重试；可在设置中切换 hf-mirror 镜像源）',
+    dl:'{0} 下载 {1} {2}%',
+    mpOkPose:'✓ 姿态模型就绪（33 关键点）', mpOkFace:'✓ 面部模型就绪（478 点云，含虹膜）',
+    mpInitFail:'{0} {1} 初始化失败：{2}', mpFailPose:'✗ 姿态模型加载失败（点击徽章重试）',
+    mpFailFace:'✗ 面部模型加载失败（点击徽章重试）', mpFail:'✗ MediaPipe 加载失败：{0}',
+    chipDepthLoading:'深度模型加载中…', chipPoseOk:'MediaPipe PoseLandmarker · 33 点', chipFaceOk:'MediaPipe FaceLandmarker · 478 点',
+    errScript:'脚本错误：{0}', errUnhandled:'未处理的异常：{0}',
+    pickVideo:'请选择视频文件（MP4 / MOV / WEBM）',
+    busy:'转换进行中，请先取消或等待完成',
+    loadErr:'✗ 视频载入失败：{0}', metaErr:'无法读取视频信息（编码可能不受支持）',
+    loaded:'✓ 已载入 {0} · {1}×{2} · {3}s · {4}MB',
+    pass1Start:'Pass 1 · 开始逐帧分析：{0} 帧 @ {1}fps（深度:{2} 平滑:{3} 姿态:{4} 面部:{5}）',
+    smOffL:'关', smLightL:'轻', smStrongL:'强', on:'开', off:'无',
+    depthErr:'深度推理异常：{0}',
+    noPoseFrames:'{0}/{1} 帧未检出人体（人物出画/遮挡属正常）',
+    noFaceFrames:'{0}/{1} 帧未检出面部（远景/侧脸属正常）',
+    allDepthFail:'⚠ 全部帧深度推理失败',
+    pass1Done:'Pass 1 完成 · {0} 帧 · {1}s（{2} 帧/秒）',
+    progress:'分析进度 {0}/{1}（{2} 帧/秒）',
+    liveAnalyze:'分析中 {0}% · {1}fps', liveCompose:'合成导出 {0}%',
+    recNone:'当前浏览器不支持 MediaRecorder 视频录制，请换用 Chrome / Edge / Safari 最新版',
+    recFail:'录制器创建失败：{0}',
+    pass2Start:'Pass 2 · 合成录制：{0} · {1}×{2} · {3}Mbps · 原声已混入（实时时长 ≈ {4}s，请保持本标签页可见）',
+    autoplayFail:'自动播放受限，改为静音合成（原声仍会混入导出流）',
+    playFail:'视频播放失败：{0}',
+    pass2Done:'Pass 2 完成 · 用时 {0}s',
+    emptyRec:'录制数据为空',
+    cacheHit:'✓ 命中分析缓存，跳过 Pass 1（同一视频 + 相同帧率）',
+    runDone:'✓ 转换完成【{0}】· {1}MB · 总用时 {2}s',
+    runCancel:'已取消本次转换', cancelReq:'收到取消请求，正在停止…', cancelled:'已取消',
+    runFail:'✗ 转换失败：{0}',
+    cmapSwitch:'深度渲染已切换（导出时生效，无需重新分析）',
+    pbgSwitch:'姿态背景已切换（导出时生效，无需重新分析）',
+    analysisReused:'分析帧率或平滑档位已变更，下次运行将重新分析',
+    cacheStat:'缓存', secFmt:'{0} s', mbFmt:'{0} MB',
+  },
+  en: {
+    appTitle:'Depth Video Studio', appSub:'DEPTH VIDEO STUDIO — LOCAL INFERENCE · AUDIO PRESERVED',
+    chipDepth:'Depth', chipPose:'Pose', chipFace:'Face',
+    cardSource:'Source video', cardParams:'Parameters', cardRun:'Run',
+    drop1:'Drop a video here, or click to browse', drop2:'MP4 · MOV · WEBM — short clips recommended',
+    btnChange:'Replace video',
+    lbFps:'Analysis fps', lbFpsTip:'skeleton / depth density',
+    fps6:'6 fps — fastest (long clips)', fps10:'10 fps — fast', fps15:'15 fps — balanced', fps24:'24 fps — recommended', fps30:'30 fps — smooth (slower)',
+    lbSm:'Temporal smoothing', lbSmTip:'reduces per-frame depth jitter',
+    smOff:'Off (raw per-frame depth)', smLight:'Light (recommended for motion control)', smStrong:'Strong (smoothest)',
+    lbCmap:'Depth rendering', lbCmapTip:'grayscale or inferno',
+    cmapGray:'Grayscale depth (original spec)', cmapInferno:'Inferno colormap (more contrast)',
+    lbPbg:'Pose background', lbPbgTip:'black for control videos',
+    pbgVideo:'Overlay on original video', pbgBlack:'Skeleton on black (control format)',
+    lbBr:'Output bitrate', lbBrTip:'quality vs size',
+    br4:'4 Mbps — light', br8:'8 Mbps — recommended', br16:'16 Mbps — HD',
+    paramHint:'Everything runs locally in your browser. Exports keep the original audio.',
+    phase1:'① Frame analysis', phase2:'② Compose & export (audio kept)',
+    phIdle:'idle', phActive:'running', phDone:'done',
+    btnPickFirst:'Select a video first', btnStart:'Start conversion', btnRunning:'Converting…', btnWaitModel:'Waiting for {0} model…',
+    btnCancel:'Cancel',
+    cacheHint:'✓ Analysis cached — rerun other modes without re-analysis',
+    stFrames:'Frames', stAT:'Analysis time', stCT:'Compose time', stSize:'Output size',
+    cardModes:'Conversion modes', modesTip:'MODE · single select', mSel:'SELECTED',
+    m1t:'Depth map', m1d:'DEPTH ANYTHING V2<br>mono depth · near=bright',
+    m2t:'Pose skeleton', m2d:'MEDIAPIPE POSE<br>33 keypoints · workout-ready',
+    m3t:'Depth + pose', m3d:'DEPTH × POSE<br>combined view',
+    m4t:'Face 478 cloud', m4d:'FACE LANDMARKER<br>478 pts · incl. iris',
+    m5t:'Everything', m5d:'DEPTH + POSE<br>+ FACE combined',
+    cardStage:'Stage',
+    stageEmpty1:'Waiting for a video', stageEmpty2:'Drop one in — live per-frame preview while analyzing',
+    cardOut:'Export result', btnDownload:'Download video',
+    cardLog:'Console', footPrivacy:'All inference runs locally in your browser — your video is never uploaded',
+    setTitle:'Settings', setAuto:'Model source: auto (HF → mirror)', setHf:'HuggingFace only', setMirror:'hf-mirror.com only (CN accelerator)',
+    setNote:'First run downloads ~60–70 MB of models (depth ≈50MB / pose ≈9MB / face ≈4MB), cached by the browser afterwards. Reload to apply.',
+    setApply:'Apply & reload',
+    modeDepth:'depth', modePose:'pose', modeFace:'face',
+    boot1:'Depth Video Studio started — all inference is local, nothing is uploaded',
+    boot2:'Five modes: depth map / pose skeleton / depth+pose / 478-point face cloud / everything — exports keep original audio',
+    bootReady:'Model preparation finished, studio ready',
+    noGpu:'No WebGPU detected: depth inference will use WASM (slower — prefer Chrome/Edge or lower the analysis fps)',
+    gpuNoAdapter:'WebGPU adapter unavailable, falling back to WASM (slower — consider lowering analysis fps)',
+    tfFail:'transformers.js failed to load ({0}): {1}',
+    tfNone:'Could not load transformers.js — check your network and reload',
+    fileNoCache:'This context (file:// double-click) cannot cache models — serve locally instead (serve.py / start-server)',
+    depthTry:'Depth model init: {0}', depthOk:'✓ Depth model ready ({0})', depthFailTry:'Attempt failed: {0}',
+    depthFail:'✗ Depth model failed: {0} (click the badge to retry, or switch to the hf-mirror source in Settings)',
+    dl:'{0} download {1} {2}%',
+    mpOkPose:'✓ Pose model ready (33 keypoints)', mpOkFace:'✓ Face model ready (478-point cloud, incl. iris)',
+    mpInitFail:'{0} {1} init failed: {2}', mpFailPose:'✗ Pose model failed (click badge to retry)',
+    mpFailFace:'✗ Face model failed (click badge to retry)', mpFail:'✗ MediaPipe failed: {0}',
+    chipDepthLoading:'Loading depth model…', chipPoseOk:'MediaPipe PoseLandmarker · 33 pts', chipFaceOk:'MediaPipe FaceLandmarker · 478 pts',
+    errScript:'Script error: {0}', errUnhandled:'Unhandled rejection: {0}',
+    pickVideo:'Please choose a video file (MP4 / MOV / WEBM)',
+    busy:'A conversion is running — cancel or wait for it to finish',
+    loadErr:'✗ Failed to load video: {0}', metaErr:'Cannot read video info (codec may be unsupported)',
+    loaded:'✓ Loaded {0} · {1}×{2} · {3}s · {4}MB',
+    pass1Start:'Pass 1 · frame-by-frame analysis: {0} frames @ {1}fps (depth:{2} smoothing:{3} pose:{4} face:{5})',
+    smOffL:'off', smLightL:'light', smStrongL:'strong', on:'on', off:'none',
+    depthErr:'Depth inference error: {0}',
+    noPoseFrames:'{0}/{1} frames without a detected body (off-screen/occlusion is normal)',
+    noFaceFrames:'{0}/{1} frames without a detected face (far/side views are normal)',
+    allDepthFail:'⚠ Depth inference failed on every frame',
+    pass1Done:'Pass 1 done · {0} frames · {1}s ({2} fps)',
+    progress:'Analysis {0}/{1} ({2} fps)',
+    liveAnalyze:'Analyzing {0}% · {1}fps', liveCompose:'Composing {0}%',
+    recNone:'This browser does not support MediaRecorder video capture — use latest Chrome / Edge / Safari',
+    recFail:'Recorder creation failed: {0}',
+    pass2Start:'Pass 2 · composing: {0} · {1}×{2} · {3}Mbps · original audio muxed in (realtime ≈ {4}s — keep this tab visible)',
+    autoplayFail:'Autoplay blocked — composing silently (audio is still muxed into the export)',
+    playFail:'Video playback failed: {0}',
+    pass2Done:'Pass 2 done · {0}s',
+    emptyRec:'Recorded data is empty',
+    cacheHit:'✓ Analysis cache hit, Pass 1 skipped (same video + same settings)',
+    runDone:'✓ Done [{0}] · {1}MB · total {2}s',
+    runCancel:'Conversion cancelled', cancelReq:'Cancel requested, stopping…', cancelled:'Cancelled',
+    runFail:'✗ Conversion failed: {0}',
+    cmapSwitch:'Depth colormap switched (applied on export — no re-analysis needed)',
+    pbgSwitch:'Pose background switched (applied on export — no re-analysis needed)',
+    analysisReused:'Analysis fps or smoothing changed — next run will re-analyze',
+    cacheStat:'cached', secFmt:'{0} s', mbFmt:'{0} MB',
+  }
+};
+let LANG = localStorage.getItem('ds.lang') || 'zh';
+function t(key, ...args){
+  let s = (I18N[LANG] && I18N[LANG][key]) ?? I18N.zh[key] ?? key;
+  args.forEach((a,i) => { s = s.split('{'+i+'}').join(a) });
+  return s;
+}
+function applyLang(){
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = I18N[LANG][el.dataset.i18n];
+    if (v != null){
+      if (v.includes('<br>')) el.innerHTML = v; else el.textContent = v;
+    }
+  });
+  $('#btnLang').textContent = LANG === 'zh' ? 'EN' : '中';
+  refreshUI(); updateEstFrames(); updateCacheHint();
+}
+
+/* ---------------- 日志 ---------------- */
+const logEl = $('#log');
+function tstamp(){ const d = new Date(); return d.toTimeString().slice(0,8) + '.' + String(d.getMilliseconds()).padStart(3,'0')[0] }
+function log(msg, lvl='info'){
+  const div = document.createElement('div');
+  div.className = 'ln ' + lvl;
+  const tm = document.createElement('span'); tm.className='t'; tm.textContent = tstamp();
+  div.appendChild(tm); div.appendChild(document.createTextNode(msg));
+  logEl.appendChild(div);
+  while (logEl.children.length > 400) logEl.firstChild.remove();
+  logEl.scrollTop = logEl.scrollHeight;
+}
+window.addEventListener('error', e => log(t('errScript', e.message), 'err'));
+window.addEventListener('unhandledrejection', e => log(t('errUnhandled', e.reason?.message ?? e.reason), 'err'));
+
+/* ---------------- 状态 ---------------- */
+const state = {
+  file:null, meta:null,
+  mode:'depth',
+  cache:null,          // { key, frames[], complete }
+  run:null,
+  result:null,
+};
+let TF=null, MPmod=null, depthPipe=null, poseLm=null, faceLm=null, audioCtx=null;
+let POSE_PAIRS=[];
+
+const els = {
+  drop:$('#drop'), fileInput:$('#fileInput'), fileBar:$('#fileBar'), fName:$('#fName'), fMeta:$('#fMeta'),
+  btnChange:$('#btnChange'), stageEmpty:$('#stageEmpty'), vid:$('#vid'), canvas:$('#outCanvas'),
+  liveBadge:$('#liveBadge'), stageBadge:$('#stageBadge'),
+  fps:$('#fpsSel'), cmap:$('#cmapSel'), sm:$('#smSel'), pbg:$('#pbgSel'), br:$('#brSel'),
+  btnStart:$('#btnStart'), btnCancel:$('#btnCancel'),
+  ph1:$('#ph1'), ph1Bar:$('#ph1Bar'), ph1Txt:$('#ph1Txt'),
+  ph2:$('#ph2'), ph2Bar:$('#ph2Bar'), ph2Txt:$('#ph2Txt'),
+  stats:$('#stats'), stFrames:$('#stFrames'), stAT:$('#stAT'), stCT:$('#stCT'), stSize:$('#stSize'),
+  cacheHint:$('#cacheHint'),
+  outCard:$('#outCard'), resVideo:$('#resVideo'), dlBtn:$('#dlBtn'), outMeta:$('#outMeta'),
+  chips:{ depth:$('#chipDepth'), pose:$('#chipPose'), face:$('#chipFace'), gpu:$('#chipGpu') },
+};
+const ctx2d = els.canvas.getContext('2d');
+
+const MODES = {
+  depth:      { deps:['depth'] },
+  pose:       { deps:['pose'] },
+  depth_pose: { deps:['depth','pose'] },
+  face:       { deps:['face'] },
+  all:        { deps:['depth','pose','face'] },
+};
+
+/* ---------------- CDN 地址 ---------------- */
+const TF_URLS = [
+  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3',
+  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm',
+];
+const MP_JS  = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/vision_bundle.mjs';
+const MP_WASM= 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/wasm';
+const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task';
+const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+const DEPTH_MODEL = 'onnx-community/depth-anything-v2-small';
+
+function setChip(name, status, tip=''){
+  const c = els.chips[name]; if (!c) return;
+  c.dataset.status = status; c.title = tip;
+}
+
+/* ---------------- 模型加载 ---------------- */
+const progLog = {};
+function dlProgress(tag, p){
+  if (p.status !== 'progress' || typeof p.progress !== 'number') return;
+  const k = tag + '|' + p.file;
+  const step = Math.floor(p.progress / 25);
+  if ((progLog[k] ?? -1) < step){ progLog[k] = step; log(t('dl', tag, p.file.split('/').pop(), Math.round(p.progress)), 'dim') }
+}
+
+async function importTF(){
+  if (TF) return TF;
+  for (const u of TF_URLS){
+    try { TF = await import(u); break }
+    catch(e){ log(t('tfFail', u.includes('+esm') ? 'ESM mirror' : 'primary', e.message), 'warn') }
+  }
+  if (!TF) throw new Error(t('tfNone'));
+  TF.env.allowLocalModels = false;
+  try { await caches.open('ds-probe'); TF.env.useBrowserCache = true }
+  catch { TF.env.useBrowserCache = false; log(t('fileNoCache'), 'dim') }
+  return TF;
+}
+
+async function loadDepth(retry=false){
+  if (depthPipe) return;
+  setChip('depth','loading', t('chipDepthLoading'));
+  try{
+    const tf = await importTF();
+    const pref = localStorage.getItem('ds.host') || 'auto';
+    let hosts = ['https://huggingface.co', 'https://hf-mirror.com'];
+    if (qs.get('host') === 'mirror' || pref === 'mirror') hosts = ['https://hf-mirror.com'];
+    if (qs.get('host') === 'hf' || pref === 'hf') hosts = ['https://huggingface.co'];
+
+    const combos = [];
+    if (qs.get('device') === 'wasm'){
+      combos.push({ device:'wasm', dtype: qs.get('dtype') || 'fp32' });
+    } else {
+      if (navigator.gpu){
+        combos.push({ device:'webgpu', dtype: qs.get('dtype') || 'fp16' });
+        if (!qs.get('dtype')) combos.push({ device:'webgpu', dtype:'fp32' });
+      }
+      combos.push({ device:'wasm', dtype: qs.get('dtype') || 'fp32' });
+    }
+    let lastErr = null;
+    for (const host of hosts){
+      for (const c of combos){
+        const tag = `${host.replace('https://','')} · ${c.device}/${c.dtype}`;
+        log(t('depthTry', tag), 'dim');
+        try{
+          tf.env.remoteHost = host;
+          depthPipe = await tf.pipeline('depth-estimation', DEPTH_MODEL, {
+            device: c.device, dtype: c.dtype,
+            progress_callback: p => dlProgress(LANG==='zh'?'深度模型':'depth model', p),
+          });
+          log(t('depthOk', tag), 'ok');
+          setChip('depth','ok', tag);
+          refreshUI(); return;
+        }catch(e){ lastErr = e; log(t('depthFailTry', (e.message||'').slice(0,160)), 'warn') }
+      }
+    }
+    throw lastErr ?? new Error('depth model failed');
+  }catch(e){
+    setChip('depth','fail', e.message);
+    log(t('depthFail', e.message), 'err');
+    if (retry) throw e;
+  }finally{ refreshUI() }
+}
+
+async function loadMP(){
+  setChip('pose','loading'); setChip('face','loading');
+  try{
+    MPmod = await import(MP_JS);
+    const fileset = await MPmod.FilesetResolver.forVisionTasks(MP_WASM);
+    POSE_PAIRS = toPairs(MPmod.PoseLandmarker?.POSE_CONNECTIONS);
+
+    const make = async (Cls, url, name) => {
+      for (const delegate of ['GPU','CPU']){
+        try{
+          return await Cls.createFromOptions(fileset, {
+            baseOptions:{ modelAssetPath:url, delegate },
+            runningMode:'VIDEO', numPoses:1, numFaces:1,
+          });
+        }catch(e){ log(t('mpInitFail', name, delegate, (e.message||'').slice(0,120)), 'warn') }
+      }
+      throw new Error(name + ' init failed');
+    };
+
+    try{
+      poseLm = await make(MPmod.PoseLandmarker, POSE_MODEL, LANG==='zh'?'姿态模型':'pose model');
+      setChip('pose','ok', t('chipPoseOk'));
+      log(t('mpOkPose'), 'ok');
+    }catch(e){ setChip('pose','fail', e.message); log(t('mpFailPose'), 'err') }
+
+    try{
+      faceLm = await make(MPmod.FaceLandmarker, FACE_MODEL, LANG==='zh'?'面部模型':'face model');
+      setChip('face','ok', t('chipFaceOk'));
+      log(t('mpOkFace'), 'ok');
+    }catch(e){ setChip('face','fail', e.message); log(t('mpFailFace'), 'err') }
+  }catch(e){
+    setChip('pose','fail', e.message); setChip('face','fail', e.message);
+    log(t('mpFail', e.message), 'err');
+  }finally{ refreshUI() }
+}
+
+function toPairs(conns){
+  if (!conns || !conns.length) return [];
+  if (typeof conns[0] === 'number'){
+    const out = [];
+    for (let i=0; i<conns.length-1; i+=2) out.push([conns[i], conns[i+1]]);
+    return out;
+  }
+  return conns.map(c => [c.start ?? c[0], c.end ?? c[1]]);
+}
+
+/* ---------------- 文件载入 ---------------- */
+function once(ev, name, timeout=8000){
+  return new Promise((res, rej) => {
+    const to = setTimeout(() => { ev.removeEventListener(name, h); rej(new Error('timeout waiting ' + name)) }, timeout);
+    function h(e){ clearTimeout(to); ev.removeEventListener(name, h); res(e) }
+    ev.addEventListener(name, h);
+  });
+}
+
+function cacheKey(){
+  const f = state.file;
+  return f ? `${f.name}|${f.size}|${els.fps.value}|${els.sm.value}` : null;
+}
+
+async function loadFile(file){
+  if (!file) return;
+  if (!(file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|mkv|avi)$/i.test(file.name))){
+    log(t('pickVideo'), 'err'); return;
+  }
+  if (state.run){ log(t('busy'), 'warn'); return }
+  const v = els.vid;
+  if (state.result){ URL.revokeObjectURL(state.result.url); state.result=null; els.outCard.hidden=true }
+  state.cache = null; updateCacheHint();
+
+  if (v.src) URL.revokeObjectURL(v.src);
+  v.src = URL.createObjectURL(file);
+  v.muted = true;
+  try{
+    await once(v, 'loadedmetadata');
+    if (!isFinite(v.duration) || !v.videoWidth) throw new Error(t('metaErr'));
+    state.file = file;
+    state.meta = { name:file.name, size:file.size, duration:v.duration, w:v.videoWidth, h:v.videoHeight };
+    try{ v.currentTime = Math.min(0.1, v.duration/2); await once(v,'seeked',3000) }catch{}
+
+    els.fName.textContent = file.name;
+    const MB = (file.size/1048576).toFixed(1);
+    els.fMeta.innerHTML =
+      `<dt>RES</dt><dd><b>${v.videoWidth} × ${v.videoHeight}</b></dd>` +
+      `<dt>DUR</dt><dd><b>${v.duration.toFixed(2)} s</b></dd>` +
+      `<dt>SIZE</dt><dd>${MB} MB</dd>` +
+      `<dt>EST&nbsp;FRAMES</dt><dd id="estFrames"><b>${Math.round(v.duration * +els.fps.value)}</b></dd>`;
+    els.drop.style.display='none';
+    els.fileBar.style.display='block';
+    els.stageEmpty.style.display='none';
+    els.canvas.style.display='none';
+    v.style.display='block';
+    setStageBadge('SOURCE');
+    log(t('loaded', file.name, v.videoWidth, v.videoHeight, v.duration.toFixed(1), MB), 'ok');
+    updateEstFrames();
+  }catch(e){
+    state.file = null;
+    log(t('loadErr', e.message), 'err');
+  }
+  refreshUI();
+}
+
+function updateEstFrames(){
+  const el = $('#estFrames');
+  if (el && state.meta){ el.innerHTML = `<b>${Math.round(state.meta.duration * +els.fps.value)}</b>` }
+}
+
+/* ---------------- UI 刷新 ---------------- */
+function setStageBadge(txt){ els.stageBadge.textContent = txt }
+
+function refreshUI(){
+  const running = !!state.run;
+  let modeOk = true, missing = '';
+  const deps = MODES[state.mode].deps;
+  for (const d of deps){
+    const ok = d==='depth' ? !!depthPipe : d==='pose' ? !!poseLm : !!faceLm;
+    if (!ok){ modeOk=false; missing = t('mode' + d.charAt(0).toUpperCase() + d.slice(1)) }
+  }
+  for (const [key,m] of Object.entries(MODES)){
+    const card = document.querySelector(`.mode[data-mode="${key}"]`);
+    const ready = m.deps.every(d => d==='depth' ? !!depthPipe : d==='pose' ? !!poseLm : !!faceLm);
+    card.dataset.ready = ready ? '1' : '0';
+  }
+  if (running){ els.btnStart.textContent=t('btnRunning'); els.btnStart.disabled=true }
+  else if (!state.file){ els.btnStart.textContent=t('btnPickFirst'); els.btnStart.disabled=true }
+  else if (!modeOk){ els.btnStart.textContent=t('btnWaitModel', missing); els.btnStart.disabled=true }
+  else { els.btnStart.textContent=t('btnStart'); els.btnStart.disabled=false }
+  els.btnCancel.style.display = running ? 'block' : 'none';
+}
+
+function setPhase(which, status, pct=null, txt=null){
+  const ph = which===1?els.ph1:els.ph2, bar = which===1?els.ph1Bar:els.ph2Bar, tx = which===1?els.ph1Txt:els.ph2Txt;
+  ph.className = 'phase' + (status==='active'?' active':status==='done'?' done':'');
+  if (pct!=null) bar.style.width = pct+'%';
+  tx.textContent = txt ?? t(status==='active'?'phActive':status==='done'?'phDone':'phIdle');
+}
+function setLive(txt, show=true){
+  if (show){ els.liveBadge.style.display='inline-flex'; els.liveBadge.textContent = txt }
+  else els.liveBadge.style.display='none';
+}
+
+function updateCacheHint(){
+  const ok = !!(state.cache?.complete && state.cache.key === cacheKey());
+  els.cacheHint.style.display = ok ? 'block' : 'none';
+}
+
+/* ---------------- 渲染器 ---------------- */
+const scratch = { a:document.createElement('canvas'), b:document.createElement('canvas'), c:document.createElement('canvas') };
+
+const INFERNO = ['#000004','#1b0c41','#4a0c6b','#781c6d','#a42c60','#cf4446','#ed6925','#fcffa4'];
+function infernoLUT(){
+  const lut = new Uint8Array(768);
+  for (let i=0;i<256;i++){
+    const tt = i/255 * (INFERNO.length-1);
+    const a = Math.floor(tt), b = Math.min(INFERNO.length-1, a+1), f = tt-a;
+    const ca = INFERNO[a], cb = INFERNO[b];
+    for (let c=0;c<3;c++){
+      lut[i*3+c] = Math.round((parseInt(ca.slice(1+2*c,3+2*c),16)*(1-f) + parseInt(cb.slice(1+2*c,3+2*c),16)*f));
+    }
+  }
+  return lut;
+}
+const LUT_INFERNO = infernoLUT();
+
+function drawDepthMap(c2d, depth, W, H, cmap){
+  if (!depth){ c2d.fillStyle='#0a0a0a'; c2d.fillRect(0,0,W,H); return }
+  const {d,w,h} = depth;
+  const sc = scratch.c;
+  if (sc.width!==w || sc.height!==h){ sc.width=w; sc.height=h }
+  const sctx = sc.getContext('2d');
+  const img = sctx.createImageData(w,h);
+  const px = img.data;
+  for (let i=0;i<d.length;i++){
+    const v = d[i];
+    const o = i*4;
+    if (cmap==='inferno'){ px[o]=LUT_INFERNO[v*3]; px[o+1]=LUT_INFERNO[v*3+1]; px[o+2]=LUT_INFERNO[v*3+2] }
+    else { px[o]=v; px[o+1]=v; px[o+2]=v }
+    px[o+3]=255;
+  }
+  sctx.putImageData(img,0,0);
+  c2d.imageSmoothingEnabled = true;
+  c2d.imageSmoothingQuality = 'high';
+  c2d.drawImage(sc, 0,0,w,h, 0,0,W,H);
+}
+
+function drawPose(c2d, lm, W, H, s, onDepth){
+  if (!lm || !lm.length) return;
+  c2d.save();
+  c2d.lineCap='round'; c2d.lineJoin='round';
+  if (onDepth){
+    c2d.strokeStyle='rgba(244,255,232,.95)'; c2d.lineWidth=3.2*s;
+    c2d.shadowColor='rgba(0,0,0,.75)'; c2d.shadowBlur=6*s;
+  } else {
+    c2d.strokeStyle='#a8c085'; c2d.lineWidth=3*s;
+    c2d.shadowColor='rgba(0,0,0,.55)'; c2d.shadowBlur=4*s;
+  }
+  c2d.beginPath();
+  for (const [a,b] of POSE_PAIRS){
+    const pa=lm[a], pb=lm[b];
+    if (!pa||!pb) continue;
+    if ((pa.visibility??1)<.3 || (pb.visibility??1)<.3) continue;
+    c2d.moveTo(pa.x*W, pa.y*H);
+    c2d.lineTo(pb.x*W, pb.y*H);
+  }
+  c2d.stroke();
+  c2d.shadowBlur=0;
+  c2d.fillStyle = onDepth ? '#ffb547' : '#f0e9dd';
+  for (const p of lm){
+    if ((p.visibility??1) < .3) continue;
+    c2d.beginPath(); c2d.arc(p.x*W, p.y*H, 3.4*s, 0, 7); c2d.fill();
+  }
+  c2d.restore();
+}
+
+function drawFace(c2d, lm, W, H, s){
+  if (!lm || !lm.length) return;
+  c2d.save();
+  c2d.shadowColor='rgba(124,224,205,.9)'; c2d.shadowBlur=5*s;
+  c2d.fillStyle='#7ce0cd';
+  c2d.beginPath();
+  for (let i=0;i<Math.min(468,lm.length);i++){
+    const p=lm[i]; if(!p) continue;
+    c2d.moveTo(p.x*W + 2*s, p.y*H);
+    c2d.arc(p.x*W, p.y*H, 2*s, 0, 7);
+  }
+  c2d.fill();
+  c2d.fillStyle='#ffb547'; c2d.shadowColor='rgba(255,181,71,.9)';
+  c2d.beginPath();
+  for (let i=468;i<lm.length;i++){
+    const p=lm[i]; if(!p) continue;
+    c2d.moveTo(p.x*W + 3.2*s, p.y*H);
+    c2d.arc(p.x*W, p.y*H, 3.2*s, 0, 7);
+  }
+  c2d.fill();
+  c2d.restore();
+}
+
+function outSize(){
+  const m = state.meta; if (!m) return [1280,720];
+  let W=m.w, H=m.h;
+  const MAX=1920;
+  if (Math.max(W,H)>MAX){ const k=MAX/Math.max(W,H); W=Math.round(W*k); H=Math.round(H*k) }
+  return [W,H];
+}
+
+function renderFrame(frame, video, mode, cmap){
+  const [W,H] = outSize();
+  if (els.canvas.width!==W || els.canvas.height!==H){ els.canvas.width=W; els.canvas.height=H }
+  ctx2d.fillStyle='#000'; ctx2d.fillRect(0,0,W,H);
+  const poseBlack = mode==='pose' && els.pbg.value==='black';
+  const depthBg = mode==='depth' || mode==='depth_pose' || mode==='all';
+  if (depthBg){
+    drawDepthMap(ctx2d, frame?.depth, W, H, cmap);
+  } else if (poseBlack){
+    // 纯黑骨架：面向 Seedance / 动作重定向的控制视频格式
+    // pure-black skeleton: control-video format for Seedance-style motion transfer
+  } else if (video){
+    try{ ctx2d.drawImage(video,0,0,W,H) }catch{}
+  }
+  const s = W/1280;
+  if (mode==='pose' || mode==='depth_pose' || mode==='all') drawPose(ctx2d, frame?.pose, W, H, s, mode!=='pose');
+  if (mode==='face' || mode==='all') drawFace(ctx2d, frame?.face, W, H, s);
+}
+
+/* ---------------- 分析（Pass 1） ---------------- */
+function seekTo(v, t){
+  return new Promise(res => {
+    const to = setTimeout(()=>res(), 4000);
+    const h = () => { v.removeEventListener('seeked', h); clearTimeout(to); res() };
+    v.addEventListener('seeked', h);
+    v.currentTime = t;
+  });
+}
+
+function packDepth(out){
+  try{
+    const raw = out?.depth;
+    if (!raw || !raw.data || !raw.width) return null;
+    const w0=raw.width, h0=raw.height, ch=raw.channels||1, src=raw.data;
+    const MAXW=256;
+    if (w0<=MAXW && ch===1) return { w:w0, h:h0, d:new Uint8Array(src) };
+    const a=scratch.a, b=scratch.b;
+    a.width=w0; a.height=h0;
+    const actx=a.getContext('2d');
+    const img=actx.createImageData(w0,h0);
+    const px=img.data;
+    for (let i=0;i<w0*h0;i++){
+      const v=src[i*ch]; const o=i*4;
+      px[o]=v; px[o+1]=v; px[o+2]=v; px[o+3]=255;
+    }
+    actx.putImageData(img,0,0);
+    const w1=Math.min(MAXW,w0), h1=Math.max(1,Math.round(h0*w1/w0));
+    b.width=w1; b.height=h1;
+    const bctx=b.getContext('2d');
+    bctx.imageSmoothingEnabled=true; bctx.imageSmoothingQuality='high';
+    bctx.drawImage(a,0,0,w1,h1);
+    const got=bctx.getImageData(0,0,w1,h1).data;
+    const d=new Uint8Array(w1*h1);
+    for (let i=0;i<d.length;i++) d[i]=got[i*4];
+    return { w:w1, h:h1, d };
+  }catch{ return null }
+}
+
+async function analyze(run, fps){
+  const v = els.vid;
+  v.pause(); v.muted = true;
+  const total = Math.max(1, Math.round(v.duration*fps));
+  const t0 = performance.now();
+  const useDepth=!!depthPipe, usePose=!!poseLm, useFace=!!faceLm;
+  const smKey = { off:'smOffL', light:'smLightL', strong:'smStrongL' }[els.sm.value] ?? 'smOffL';
+  log(t('pass1Start', total, fps, useDepth?t('on'):t('off'), t(smKey), usePose?t('on'):t('off'), useFace?t('on'):t('off')), 'info');
+
+  const m = state.meta;
+  const k = Math.min(1, 518/Math.max(m.w,m.h));
+  const fw = Math.max(32,Math.round(m.w*k)), fh = Math.max(32,Math.round(m.h*k));
+  const feed = document.createElement('canvas'); feed.width=fw; feed.height=fh;
+  const fctx = feed.getContext('2d', { willReadFrequently:true });
+
+  const frames = [];
+  let mpTs = performance.now();
+  let noPose=0, noFace=0, noDepth=0;
+  let lastLogT = performance.now();
+  const alpha = { off:1, light:0.65, strong:0.45 }[els.sm.value] ?? 1;
+  let smPrev = null;
+
+  for (let i=0;i<total;i++){
+    if (run.cancelled) throw new Cancelled();
+    const tt = Math.min(v.duration - 1e-3, i/fps);
+    await seekTo(v, tt);
+
+    let depth=null, pose=null, face=null;
+    if (useDepth){
+      try{
+        fctx.drawImage(v,0,0,fw,fh);
+        const id = fctx.getImageData(0,0,fw,fh);
+        const out = await depthPipe(new TF.RawImage(id.data, fw, fh, 4));
+        depth = packDepth(out);
+        if (depth && alpha < 1){
+          if (smPrev && smPrev.w===depth.w && smPrev.h===depth.h){
+            const d=depth.d, p=smPrev.d;
+            for (let j=0;j<d.length;j++) d[j] = d[j]*alpha + p[j]*(1-alpha);
+          }
+          smPrev = { w:depth.w, h:depth.h, d:new Uint8Array(depth.d) };
+        }
+        if (!depth) noDepth++;
+      }catch(e){ noDepth++; if (noDepth===1) log(t('depthErr', e.message), 'warn') }
+    }
+    const ts = mpTs + i*40;
+    if (usePose){
+      try{ pose = poseLm.detectForVideo(v, ts)?.landmarks?.[0] ?? null }catch{}
+      if (!pose) noPose++;
+    }
+    if (useFace){
+      try{ face = faceLm.detectForVideo(v, ts+1)?.faceLandmarks?.[0] ?? null }catch{}
+      if (!face) noFace++;
+    }
+    frames.push({ t:tt, depth, pose, face });
+
+    renderFrame(frames[i], v, state.mode, els.cmap.value);
+    const pct = (i+1)/total*100;
+    setPhase(1,'active',pct, `${i+1}/${total}`);
+    const speed = (i+1)/((performance.now()-t0)/1000);
+    setLive(t('liveAnalyze', pct.toFixed(0), speed.toFixed(1)));
+    if (performance.now()-lastLogT > 4000){ lastLogT=performance.now(); log(t('progress', i+1, total, speed.toFixed(1)), 'dim') }
+    if (i%3===0) await raf();
+  }
+  const secs = (performance.now()-t0)/1000;
+  if (noDepth===total && useDepth) log(t('allDepthFail'), 'warn');
+  if (noPose) log(t('noPoseFrames', noPose, total), 'dim');
+  if (noFace) log(t('noFaceFrames', noFace, total), 'dim');
+  log(t('pass1Done', total, secs.toFixed(1), (total/secs).toFixed(1)), 'ok');
+  return frames;
+}
+
+/* ---------------- 合成导出（Pass 2） ---------------- */
+async function ensureAudio(v){
+  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  try{ if (audioCtx.state==='suspended') await audioCtx.resume() }catch{}
+  if (!v._mediaSrc){
+    v._mediaSrc = audioCtx.createMediaElementSource(v);
+    v._dest = audioCtx.createMediaStreamDestination();
+    v._mediaSrc.connect(v._dest);
+  }
+}
+document.addEventListener('pointerdown', () => { audioCtx?.resume().catch(()=>{}) }, { once:true });
+
+function pickMime(){
+  const list = [
+    'video/mp4;codecs="avc1.64001f,mp4a.40.2"', 'video/mp4',
+    'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm',
+  ];
+  for (const m of list){ try{ if (MediaRecorder.isTypeSupported(m)) return m }catch{} }
+  return null;
+}
+
+async function compose(run, frames, fps, mode, cmap, bitrate){
+  const v = els.vid;
+  const [W,H] = outSize();
+  els.canvas.style.display='block'; v.style.display='none';
+  renderFrame(frames[0], v, mode, cmap);
+
+  const stream = els.canvas.captureStream();
+  await ensureAudio(v);
+  const aTrack = v._dest.stream.getAudioTracks()[0];
+  if (aTrack) stream.addTrack(aTrack);
+
+  const mime = pickMime();
+  if (!mime) throw new Error(t('recNone'));
+  const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+  let rec;
+  try{
+    rec = new MediaRecorder(stream, { mimeType:mime, videoBitsPerSecond:bitrate*1e6, audioBitsPerSecond:160000 });
+  }catch(e){ throw new Error(t('recFail', e.message)) }
+  const chunks=[];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data) };
+  const stopped = new Promise(res => rec.onstop = res);
+
+  v.currentTime = 0; v.muted=false; v.volume=1;
+  log(t('pass2Start', mime, W, H, bitrate, v.duration.toFixed(1)), 'info');
+  rec.start(600);
+  const t0 = performance.now();
+  try{ await v.play() }
+  catch(e){
+    log(t('autoplayFail'), 'warn');
+    v.muted=true;
+    try{ await v.play() }catch(e2){ throw new Error(t('playFail', e2.message)) }
+  }
+
+  await new Promise(done => {
+    const finish = () => { v.removeEventListener('ended', finish); done() };
+    v.addEventListener('ended', finish);
+    const tick = () => {
+      if (run.cancelled || v.ended){ finish(); return }
+      const idx = Math.min(frames.length-1, Math.max(0, Math.round(v.currentTime*fps)));
+      renderFrame(frames[idx], v, mode, cmap);
+      const pct = v.currentTime/v.duration*100;
+      setPhase(2,'active',pct, pct.toFixed(0)+'%');
+      setLive(t('liveCompose', pct.toFixed(0)));
+      if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(tick);
+      else requestAnimationFrame(tick);
+    };
+    if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(tick); else requestAnimationFrame(tick);
+  });
+
+  v.pause(); v.muted = true;
+  await sleep(150);
+  rec.stop();
+  await stopped;
+  if (run.cancelled) throw new Cancelled();
+  if (!chunks.length) throw new Error(t('emptyRec'));
+  log(t('pass2Done', ((performance.now()-t0)/1000).toFixed(1)), 'ok');
+  return { blob:new Blob(chunks,{type:mime}), ext };
+}
+
+/* ---------------- 主流程 ---------------- */
+els.btnStart.addEventListener('click', run);
+els.btnCancel.addEventListener('click', () => {
+  if (state.run){ state.run.cancelled = true; log(t('cancelReq'), 'warn') }
+});
+
+async function run(){
+  if (state.run || !state.file) return;
+  const file = state.file;
+  const fps = +els.fps.value, cmap = els.cmap.value, bitrate = +els.br.value;
+  const mode = state.mode;
+  const modeLabel = document.querySelector(`.mode[data-mode="${mode}"] .mtitle`).textContent;
+
+  const runObj = state.run = { cancelled:false };
+  els.outCard.hidden = true;
+  els.canvas.style.display='block';
+  setStageBadge('RUNNING');
+  refreshUI();
+
+  let aT=null, cT=null;
+  const t0 = performance.now();
+  try{
+    const key = cacheKey();
+    let frames;
+    if (state.cache?.complete && state.cache.key===key){
+      frames = state.cache.frames;
+      setPhase(1,'done',100, t('cacheStat') + ' ' + frames.length);
+      log(t('cacheHit'), 'ok');
+    } else {
+      state.cache = null; updateCacheHint();
+      setPhase(1,'active',0);
+      frames = await analyze(runObj, fps);
+      state.cache = { key, frames, complete:true };
+    }
+    if (runObj.cancelled) throw new Cancelled();
+    aT = ((performance.now()-t0)/1000);
+    setPhase(1,'done',100, frames.length+'');
+
+    setPhase(2,'active',0);
+    const c0 = performance.now();
+    const { blob, ext } = await compose(runObj, frames, fps, mode, cmap, bitrate);
+    cT = (performance.now()-c0)/1000;
+    setPhase(2,'done',100);
+
+    if (state.result) URL.revokeObjectURL(state.result.url);
+    const url = URL.createObjectURL(blob);
+    state.result = { url, blob, ext };
+    const base = state.meta.name.replace(/\.[^.]+$/, '');
+    els.resVideo.src = url;
+    els.dlBtn.href = url;
+    els.dlBtn.download = `${base}_${mode}.${ext}`;
+    els.outCard.hidden = false;
+    const [W,H] = outSize();
+    const mb = (blob.size/1048576).toFixed(1);
+    els.outMeta.textContent = LANG==='zh'
+      ? `${mb} MB · ${ext.toUpperCase()} · ${W}×${H} · 原声保留`
+      : `${mb} MB · ${ext.toUpperCase()} · ${W}×${H} · audio preserved`;
+    els.stFrames.textContent = frames.length;
+    els.stAT.textContent = aT!=null ? t('secFmt', aT.toFixed(1)) : t('cacheStat');
+    els.stCT.textContent = t('secFmt', cT.toFixed(1));
+    els.stSize.textContent = t('mbFmt', mb);
+    els.stats.style.display='grid';
+    setStageBadge('DONE ✓');
+    log(t('runDone', modeLabel, mb, ((performance.now()-t0)/1000).toFixed(1)), 'ok');
+    els.outCard.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    updateCacheHint();
+  }catch(e){
+    if (e instanceof Cancelled || runObj.cancelled){
+      log(t('runCancel'), 'warn');
+    } else {
+      log(t('runFail', e.message ?? e), 'err');
+      console.error(e);
+    }
+    setPhase(1,'idle',0); setPhase(2,'idle',0);
+    setStageBadge(state.file ? 'SOURCE' : 'STANDBY');
+    els.canvas.style.display='none';
+    if (state.file) els.vid.style.display='block';
+  }finally{
+    setLive('', false);
+    els.vid.pause(); els.vid.muted=true;
+    state.run=null;
+    refreshUI();
+  }
+}
+
+/* ---------------- 交互绑定 ---------------- */
+els.drop.addEventListener('click', () => els.fileInput.click());
+els.stageEmpty.addEventListener('click', () => els.fileInput.click());
+els.btnChange.addEventListener('click', () => els.fileInput.click());
+els.fileInput.addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value='' });
+
+let dragDepth=0;
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; els.drop.classList.add('over') });
+addEventListener('dragleave', () => { if (--dragDepth<=0){ dragDepth=0; els.drop.classList.remove('over') } });
+addEventListener('drop', e => {
+  e.preventDefault(); dragDepth=0; els.drop.classList.remove('over');
+  const f = e.dataTransfer?.files?.[0];
+  if (f) loadFile(f);
+});
+
+document.querySelectorAll('.mode').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.mode').forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    state.mode = card.dataset.mode;
+    refreshUI();
+    if (state.cache?.complete && state.cache.key===cacheKey()){
+      const f = state.cache.frames[state.cache.frames.length-1];
+      els.canvas.style.display='block';
+      renderFrame(f, els.vid, state.mode, els.cmap.value);
+    }
+  });
+});
+
+function renderCachePreview(){
+  if (state.cache?.complete && state.file && state.cache.key===cacheKey()){
+    const f = state.cache.frames[state.cache.frames.length-1];
+    els.canvas.style.display='block';
+    renderFrame(f, els.vid, state.mode, els.cmap.value);
+  }
+}
+els.fps.addEventListener('change', () => { updateEstFrames(); updateCacheHint(); if (state.cache?.complete && state.cache.key!==cacheKey()) log(t('analysisReused'), 'dim') });
+els.sm.addEventListener('change', () => { updateCacheHint(); if (state.cache?.complete && state.cache.key!==cacheKey()) log(t('analysisReused'), 'dim') });
+els.cmap.addEventListener('change', () => { renderCachePreview(); log(t('cmapSwitch'), 'dim') });
+els.pbg.addEventListener('change', () => { renderCachePreview(); log(t('pbgSwitch'), 'dim') });
+
+els.chips.depth.addEventListener('click', () => { if (els.chips.depth.dataset.status==='fail') loadDepth(true) });
+els.chips.pose.addEventListener('click', () => { if (!poseLm && els.chips.pose.dataset.status==='fail') loadMP() });
+els.chips.face.addEventListener('click', () => { if (!faceLm && els.chips.face.dataset.status==='fail') loadMP() });
+
+/* 语言切换 */
+$('#btnLang').addEventListener('click', () => {
+  LANG = LANG === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('ds.lang', LANG);
+  applyLang();
+});
+
+/* 设置弹层 */
+const settingsEl = $('#settings');
+$('#btnSettings').addEventListener('click', e => {
+  e.stopPropagation();
+  const pref = localStorage.getItem('ds.host') || 'auto';
+  settingsEl.querySelector(`input[value="${pref}"]`).checked = true;
+  settingsEl.classList.toggle('open');
+});
+document.addEventListener('click', e => { if (!settingsEl.contains(e.target) && e.target.id!=='btnSettings') settingsEl.classList.remove('open') });
+$('#btnApplyHost').addEventListener('click', () => {
+  const v = settingsEl.querySelector('input[name="host"]:checked')?.value || 'auto';
+  localStorage.setItem('ds.host', v);
+  location.reload();
+});
+
+addEventListener('beforeunload', e => { if (state.run){ e.preventDefault(); e.returnValue='' } });
+
+/* ---------------- 启动 ---------------- */
+applyLang();
+log(t('boot1'), 'info');
+log(t('boot2'), 'dim');
+if (navigator.gpu){
+  setChip('gpu','ok', LANG==='zh' ? 'WebGPU 可用（深度推理加速）' : 'WebGPU available (accelerated depth)');
+  navigator.gpu.requestAdapter().then(a => { if (!a){ setChip('gpu','idle','WebGPU → WASM'); log(t('gpuNoAdapter'),'warn') } }).catch(()=>{});
+} else {
+  setChip('gpu','idle','WebGPU: N/A');
+  log(t('noGpu'), 'warn');
+}
+Promise.all([ loadDepth(), loadMP() ]).finally(() => {
+  log(t('bootReady'), 'dim');
+});
+
+/* E2E 测试钩子 */
+window.__ds = {
+  state, get ready(){ return { depth:!!depthPipe, pose:!!poseLm, face:!!faceLm } },
+  get cache(){ return state.cache },
+  loadFile, get lang(){ return LANG },
+};
+</script>
+</body>
+</html>

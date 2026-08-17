@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+  <title id="title">Depth Video Studio</title>
+  <desc id="desc">Depth · Pose · 478-pt Face — motion-control videos from your browser, no…</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#656a64" stroke-opacity=".12"/></pattern>
+    <linearGradient id="connector"><stop stop-color="#e5793f"/><stop offset="1" stop-color="#656a64"/></linearGradient>
+  </defs>
+  <style>
+    .sans { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .mono { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    .serif { font-family: Georgia, "Times New Roman", serif; }
+    .small { font-size: 18px; font-weight: 700; } .tiny { font-size: 14px; font-weight: 600; } .symbol { font-size: 34px; font-weight: 800; }
+  </style>
+  <rect width="1200" height="480" rx="24" fill="#f4f3ee"/>
+  <rect width="1200" height="480" rx="24" fill="url(#grid)" opacity=".08"/>
+  <text x="72" y="72" fill="#e5793f" class="mono small" letter-spacing="2">AWESOME README STUDIO · PRODUCT PROOF</text>
+  <text x="72" y="190" fill="#171917" class="sans" font-size="76" font-weight="800" letter-spacing="-2">Depth Video Studio</text>
+  <text x="76" y="242" fill="#656a64" class="sans" font-size="22" font-weight="600">Depth · Pose · 478-pt Face — motion-control videos from your browser, no…</text>
+  <rect x="72" y="292" width="188" height="42" rx="21" fill="#e5793f"/>
+  <text x="166" y="319" text-anchor="middle" fill="#f4f3ee" class="mono" font-size="15" font-weight="800">BEAUTIFUL · TRUE</text>
+  <g transform="translate(770 56)">
+  <rect x="0" y="36" width="300" height="250" rx="18" fill="#fff" stroke="#171917" stroke-opacity=".16"/>
+  <rect x="38" y="0" width="300" height="250" rx="18" fill="#fff" stroke="#171917" stroke-opacity=".16"/>
+  <rect x="62" y="24" width="252" height="126" rx="12" fill="#e5793f" fill-opacity=".1"/>
+  <path d="M86 116l48-42 38 30 42-55 68 67z" fill="#e5793f" fill-opacity=".75"/>
+  <circle cx="254" cy="58" r="13" fill="#656a64"/>
+  <rect x="62" y="174" width="150" height="11" rx="5" fill="#171917" fill-opacity=".75"/>
+  <rect x="62" y="199" width="214" height="9" rx="4" fill="#171917" fill-opacity=".22"/>
+</g>
+</svg>
