@@ -69,7 +69,11 @@ Requirements: a modern browser — Chrome/Edge 113+ for WebGPU acceleration (Saf
 | Face 478-point cloud | full face mesh incl. iris highlights | expression reference |
 | Everything | depth + skeleton + face combined | visual comparison |
 
-Workflow niceties: drag-and-drop, live per-frame preview during analysis, two-phase progress, cancel anytime, temporal EMA smoothing to kill per-frame depth jitter, analysis fps 6–30, bitrate 4–16 Mbps, and a bilingual UI (中文 / English).
+Workflow niceties: drag-and-drop, live per-frame preview during analysis, two-phase progress, cancel anytime, temporal EMA smoothing to kill per-frame depth jitter, analysis fps 6–30, bitrate 4–16 Mbps, a bilingual UI (中文 / English), and **batch mode** — queue up to 10 clips with one mode/parameter set, download each result or grab them all as a single ZIP:
+
+<p align="center">
+  <img src="examples/README-assets/ui-batch.png" alt="Batch mode: queue of clips with per-file status and a one-click ZIP download" width="70%" />
+</p>
 
 ## Feeding the output to a generator
 
@@ -87,11 +91,12 @@ All inference runs locally in your browser. There is no backend, no analytics, a
 
 ## Roadmap
 
+- [x] Batch queue — up to 10 clips, one click, ZIP download
 - [ ] Multi-person pose (`numPoses > 1`)
 - [ ] Hand landmarks (21 × 2)
 - [ ] Larger depth model option (DA-V2 large / Depth Pro)
 - [ ] PNG-sequence export for ComfyUI
-- [ ] Batch folder processing via File System Access API
+- [ ] Folder batch via File System Access API
 
 Contributions welcome — the whole app is a single readable file, and good first issues are tagged.
 

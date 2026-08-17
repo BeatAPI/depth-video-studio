@@ -69,7 +69,11 @@ python3 serve.py        # Windows: start-server.bat · macOS: start-server.comma
 | 面部 478 点云 | 全脸网格点，虹膜高亮 | 表情参考 |
 | 全部叠加 | 深度 + 骨架 + 面部 | 视觉对比 |
 
-工作台细节：拖拽上传、分析过程逐帧实时预览、双阶段进度、随时取消、时序 EMA 平滑消除逐帧深度抖动、分析帧率 6–30 可调、码率 4–16 Mbps、中英双语界面。
+工作台细节：拖拽上传、分析过程逐帧实时预览、双阶段进度、随时取消、时序 EMA 平滑消除逐帧深度抖动、分析帧率 6–30 可调、码率 4–16 Mbps、中英双语界面，以及**批量模式**——一次最多排 10 个视频、统一模式参数，逐个自动转换，可单独下载或一键打包 ZIP：
+
+<p align="center">
+  <img src="examples/README-assets/ui-batch.png" alt="批量模式：队列显示每个文件状态，支持一键 ZIP 下载" width="70%" />
+</p>
 
 ## 喂给生成模型
 
@@ -87,11 +91,12 @@ python3 serve.py        # Windows: start-server.bat · macOS: start-server.comma
 
 ## 路线图
 
+- [x] 批量队列 — 单次最多 10 个，一键 ZIP 下载
 - [ ] 多人姿态（`numPoses > 1`）
 - [ ] 手部 21×2 关键点
 - [ ] 更大深度模型可选（DA-V2 large / Depth Pro）
 - [ ] PNG 序列导出（ComfyUI）
-- [ ] File System Access API 批量处理
+- [ ] 文件夹批量（File System Access API）
 
 欢迎贡献——整个应用是一个可读的单文件，已标注 good first issue。
 

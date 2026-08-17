@@ -242,6 +242,39 @@ footer{
 #settings p{font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:10px;line-height:1.7}
 #settings .btn{width:100%;margin-top:12px}
 
+/* ---------- queue ---------- */
+.srctabs{display:flex;gap:8px;margin-bottom:12px}
+.srctab{
+  flex:1;border:1px solid var(--line2);background:rgba(0,0,0,.18);color:var(--ink-dim);
+  border-radius:9px;padding:7px 0;font-family:var(--sans);font-size:12.5px;cursor:pointer;transition:.18s;
+}
+.srctab:hover{color:var(--ink)}
+.srctab.sel{border-color:var(--acc);background:var(--acc-soft);color:var(--ink);font-weight:600}
+#queueWrap{margin-top:12px}
+#queueList{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:7px}
+#queueList::-webkit-scrollbar{width:8px}
+#queueList::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px}
+.qrow{
+  display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:9px;
+  background:rgba(0,0,0,.2);padding:8px 11px;font-family:var(--mono);font-size:11.5px;
+}
+.qrow .qidx{color:var(--acc);flex:none;width:20px}
+.qrow .qname{flex:1;min-width:0;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qrow .qname small{color:var(--ink-faint);margin-left:6px}
+.qrow .qst{flex:none;font-size:10.5px;letter-spacing:.05em;color:var(--ink-faint)}
+.qrow .qst.run{color:var(--acc2)}
+.qrow .qst.done{color:var(--sage)}
+.qrow .qst.fail{color:var(--err)}
+.qrow .qact{
+  flex:none;border:none;background:none;color:var(--ink-faint);cursor:pointer;font-family:var(--mono);
+  font-size:11px;padding:2px 4px;border-radius:5px;
+}
+.qrow .qact:hover{color:var(--err)}
+.qrow .qact.dl{color:var(--acc2)}
+.qrow .qact.dl:hover{color:var(--acc)}
+#queueFoot{display:flex;align-items:center;gap:12px;margin-top:11px}
+#queueSummary{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint)}
+
 @media (max-width:1120px){
   main{grid-template-columns:1fr}
   .modes{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
@@ -285,16 +318,27 @@ footer{
   <aside class="rail">
     <section class="card">
       <h2><b>01</b><span data-i18n="cardSource">源视频</span><span>SOURCE</span></h2>
+      <div class="srctabs">
+        <button id="tabSingle" class="srctab sel" type="button">单个</button>
+        <button id="tabBatch" class="srctab" type="button">批量 ≤ 10</button>
+      </div>
       <div class="drop" id="drop">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
-        <div class="d1" data-i18n="drop1">拖拽视频到此处，或点击选择</div>
-        <div class="d2" data-i18n="drop2">MP4 · MOV · WEBM — 短视频为宜</div>
+        <div class="d1" id="dropD1">拖拽视频到此处，或点击选择</div>
+        <div class="d2" id="dropD2">MP4 · MOV · WEBM — 短视频为宜</div>
       </div>
       <input type="file" id="fileInput" accept="video/*" hidden>
       <div class="filebar" id="fileBar">
         <div class="fname"><span class="okdot">●</span><span id="fName"></span></div>
         <dl class="meta" id="fMeta"></dl>
         <div class="row"><button class="btn small" id="btnChange" data-i18n="btnChange">更换视频</button></div>
+      </div>
+      <div id="queueWrap" hidden>
+        <div id="queueList"></div>
+        <div id="queueFoot" hidden>
+          <button class="btn small" id="btnZip" data-i18n="btnZip">全部下载 ZIP</button>
+          <span id="queueSummary"></span>
+        </div>
       </div>
     </section>
 
@@ -505,6 +549,19 @@ const I18N = {
     setNote:'首次使用需下载模型约 60–70 MB（深度 ≈50MB / 姿态 ≈9MB / 面部 ≈4MB），之后浏览器自动缓存。更改后刷新生效。',
     setApply:'应用并刷新',
     modeDepth:'深度', modePose:'姿态', modeFace:'面部',
+    /* 批量 */
+    tabS:'单个', tabB:'批量 ≤ 10',
+    drop1B:'拖入多个视频（最多 10 个），或点击选择', drop2B:'批量使用同一模式与参数，逐个自动转换',
+    qWait:'排队中', qRun:'转换中', qDone:'✓ 完成', qFail:'✗ 失败',
+    btnBatchStart:'开始批量转换（{0} 个）', btnRemove:'移除', btnZip:'全部下载 ZIP',
+    batchClamp:'批量上限为 10 个视频，已忽略多余的 {0} 个',
+    batchStart:'批量开始：{0} 个视频 · 【{1}】模式 · {2}fps',
+    addQ:'已加入 {0} 个视频，队列共 {1} 个',
+    batchFileDone:'[{0}/{1}] ✓ {2} · {3}MB',
+    batchFileFail:'[{0}/{1}] ✗ {2}：{3}',
+    batchDone:'✓ 批量完成：{0} 成功 / {1} 失败 · 总用时 {2}s',
+    batchCancel:'批量已取消：已完成 {0} 个，剩余未跑',
+    zipDone:'✓ 已打包 {0} 个文件 → {1}（{2}MB）', zipNone:'还没有可下载的批量结果', zipFail:'打包失败：{0}',
     /* 动态消息 */
     boot1:'深度视频工作台启动 · 全部推理在本地浏览器完成，视频不会上传',
     boot2:'五种模式：灰度深度图 / 姿态骨架 / 深度+姿态 / 面部478点云 / 全部叠加 — 导出保留原声',
@@ -588,6 +645,19 @@ const I18N = {
     setNote:'First run downloads ~60–70 MB of models (depth ≈50MB / pose ≈9MB / face ≈4MB), cached by the browser afterwards. Reload to apply.',
     setApply:'Apply & reload',
     modeDepth:'depth', modePose:'pose', modeFace:'face',
+    /* batch */
+    tabS:'Single', tabB:'Batch ≤ 10',
+    drop1B:'Drop multiple videos (up to 10), or click to browse', drop2B:'One mode & one parameter set, converted one by one',
+    qWait:'queued', qRun:'converting', qDone:'✓ done', qFail:'✗ failed',
+    btnBatchStart:'Batch convert ({0} clips)', btnRemove:'remove', btnZip:'Download all (ZIP)',
+    batchClamp:'Batch limit is 10 videos — {0} extra file(s) ignored',
+    batchStart:'Batch started: {0} clips · [{1}] mode · {2}fps',
+    addQ:'Added {0} video(s), {1} in queue',
+    batchFileDone:'[{0}/{1}] ✓ {2} · {3}MB',
+    batchFileFail:'[{0}/{1}] ✗ {2}: {3}',
+    batchDone:'✓ Batch finished: {0} ok / {1} failed · total {2}s',
+    batchCancel:'Batch cancelled: {0} finished, rest skipped',
+    zipDone:'✓ Zipped {0} files → {1} ({2}MB)', zipNone:'No batch results to download yet', zipFail:'Zip failed: {0}',
     boot1:'Depth Video Studio started — all inference is local, nothing is uploaded',
     boot2:'Five modes: depth map / pose skeleton / depth+pose / 478-point face cloud / everything — exports keep original audio',
     bootReady:'Model preparation finished, studio ready',
@@ -649,7 +719,48 @@ function applyLang(){
     }
   });
   $('#btnLang').textContent = LANG === 'zh' ? 'EN' : '中';
+  applySrcTexts(); renderQueue();
   refreshUI(); updateEstFrames(); updateCacheHint();
+}
+
+/* ---------------- 单个 / 批量 ---------------- */
+function applySrcTexts(){
+  const b = state.srcMode === 'batch';
+  els.tabSingle.textContent = t('tabS');
+  els.tabBatch.textContent = t('tabB');
+  els.tabSingle.classList.toggle('sel', !b);
+  els.tabBatch.classList.toggle('sel', b);
+  els.dropD1.textContent = t(b ? 'drop1B' : 'drop1');
+  els.dropD2.textContent = t(b ? 'drop2B' : 'drop2');
+  els.fileInput.multiple = b;
+}
+function setSrcMode(m){
+  if (state.run){ log(t('busy'), 'warn'); return }
+  if (state.srcMode === m) return;
+  state.srcMode = m;
+  applySrcTexts();
+  if (m === 'batch'){
+    els.fileBar.style.display = 'none';
+    els.drop.style.display = 'block';
+    els.queueWrap.hidden = false;
+    els.canvas.style.display='none';
+    els.stageEmpty.style.display = state.queue.length ? 'none' : 'block';
+    els.vid.style.display = state.queue.length ? 'block' : 'none';
+    setStageBadge(state.queue.length ? 'QUEUE ' + state.queue.length : 'STANDBY');
+    renderQueue();
+  } else {
+    els.queueWrap.hidden = true;
+    if (state.file){
+      els.drop.style.display='none'; els.fileBar.style.display='block';
+      els.stageEmpty.style.display='none'; els.vid.style.display='block';
+      setStageBadge('SOURCE');
+    } else {
+      els.drop.style.display='block'; els.fileBar.style.display='none';
+      els.stageEmpty.style.display='block'; els.vid.style.display='none';
+      setStageBadge('STANDBY');
+    }
+  }
+  refreshUI();
 }
 
 /* ---------------- 日志 ---------------- */
@@ -671,10 +782,13 @@ window.addEventListener('unhandledrejection', e => log(t('errUnhandled', e.reaso
 const state = {
   file:null, meta:null,
   mode:'depth',
+  srcMode:'single',     // 'single' | 'batch'
+  queue:[],             // [{file, status:'wait'|'run'|'done'|'fail', result, error, url, dur}]
   cache:null,          // { key, frames[], complete }
   run:null,
   result:null,
 };
+const cachePool = new Map();   // 批量/重复文件的分析帧缓存（LRU，上限 12）
 let TF=null, MPmod=null, depthPipe=null, poseLm=null, faceLm=null, audioCtx=null;
 let POSE_PAIRS=[];
 
@@ -682,6 +796,8 @@ const els = {
   drop:$('#drop'), fileInput:$('#fileInput'), fileBar:$('#fileBar'), fName:$('#fName'), fMeta:$('#fMeta'),
   btnChange:$('#btnChange'), stageEmpty:$('#stageEmpty'), vid:$('#vid'), canvas:$('#outCanvas'),
   liveBadge:$('#liveBadge'), stageBadge:$('#stageBadge'),
+  tabSingle:$('#tabSingle'), tabBatch:$('#tabBatch'), dropD1:$('#dropD1'), dropD2:$('#dropD2'),
+  queueWrap:$('#queueWrap'), queueList:$('#queueList'), queueFoot:$('#queueFoot'), btnZip:$('#btnZip'), queueSummary:$('#queueSummary'),
   fps:$('#fpsSel'), cmap:$('#cmapSel'), sm:$('#smSel'), pbg:$('#pbgSel'), br:$('#brSel'),
   btnStart:$('#btnStart'), btnCancel:$('#btnCancel'),
   ph1:$('#ph1'), ph1Bar:$('#ph1Bar'), ph1Txt:$('#ph1Txt'),
@@ -844,26 +960,31 @@ function cacheKey(){
   return f ? `${f.name}|${f.size}|${els.fps.value}|${els.sm.value}` : null;
 }
 
+const VIDEO_RE = /\.(mp4|mov|webm|m4v|mkv|avi)$/i;
+const isVideoFile = f => f.type.startsWith('video/') || VIDEO_RE.test(f.name);
+
+async function prepareVideo(file){
+  const v = els.vid;
+  if (v.src) URL.revokeObjectURL(v.src);
+  v.src = URL.createObjectURL(file);
+  v.muted = true;
+  await once(v, 'loadedmetadata');
+  if (!isFinite(v.duration) || !v.videoWidth) throw new Error(t('metaErr'));
+  state.file = file;
+  state.meta = { name:file.name, size:file.size, duration:v.duration, w:v.videoWidth, h:v.videoHeight };
+  try{ v.currentTime = Math.min(0.1, v.duration/2); await once(v,'seeked',3000) }catch{}
+}
+
 async function loadFile(file){
   if (!file) return;
-  if (!(file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v|mkv|avi)$/i.test(file.name))){
-    log(t('pickVideo'), 'err'); return;
-  }
+  if (!isVideoFile(file)){ log(t('pickVideo'), 'err'); return }
   if (state.run){ log(t('busy'), 'warn'); return }
   const v = els.vid;
   if (state.result){ URL.revokeObjectURL(state.result.url); state.result=null; els.outCard.hidden=true }
   state.cache = null; updateCacheHint();
 
-  if (v.src) URL.revokeObjectURL(v.src);
-  v.src = URL.createObjectURL(file);
-  v.muted = true;
   try{
-    await once(v, 'loadedmetadata');
-    if (!isFinite(v.duration) || !v.videoWidth) throw new Error(t('metaErr'));
-    state.file = file;
-    state.meta = { name:file.name, size:file.size, duration:v.duration, w:v.videoWidth, h:v.videoHeight };
-    try{ v.currentTime = Math.min(0.1, v.duration/2); await once(v,'seeked',3000) }catch{}
-
+    await prepareVideo(file);
     els.fName.textContent = file.name;
     const MB = (file.size/1048576).toFixed(1);
     els.fMeta.innerHTML =
@@ -884,6 +1005,78 @@ async function loadFile(file){
     log(t('loadErr', e.message), 'err');
   }
   refreshUI();
+}
+
+/* ---------------- 批量队列 ---------------- */
+const BATCH_MAX = 10;
+function addFiles(files){
+  if (!files || !files.length) return;
+  if (state.srcMode !== 'batch'){ loadFile(files[0]); return }
+  if (state.run){ log(t('busy'), 'warn'); return }
+  let list = [...files].filter(isVideoFile);
+  if (!list.length){ log(t('pickVideo'), 'err'); return }
+  const room = BATCH_MAX - state.queue.length;
+  if (list.length > room){
+    log(t('batchClamp', list.length - room), 'warn');
+    list = list.slice(0, Math.max(0, room));
+  }
+  if (!list.length) return;
+  for (const f of list) state.queue.push({ file:f, status:'wait', result:null, error:null, url:null, dur:null });
+  log(t('addQ', list.length, state.queue.length), 'ok');
+  els.stageEmpty.style.display = 'none';
+  els.vid.style.display = state.file ? 'block' : 'none';
+  setStageBadge('QUEUE ' + state.queue.length);
+  renderQueue(); refreshUI();
+}
+
+function removeQueueEntry(i){
+  if (state.run) return;
+  const e = state.queue[i];
+  if (!e) return;
+  if (e.url) URL.revokeObjectURL(e.url);
+  state.queue.splice(i,1);
+  if (!state.queue.length){
+    els.stageEmpty.style.display = state.file ? 'none' : 'block';
+    setStageBadge(state.file ? 'SOURCE' : 'STANDBY');
+  } else setStageBadge('QUEUE ' + state.queue.length);
+  renderQueue(); refreshUI();
+}
+
+function qStatusText(e){
+  return e.status==='wait' ? t('qWait') : e.status==='run' ? t('qRun')
+    : e.status==='done' ? t('qDone') : t('qFail');
+}
+
+function renderQueue(){
+  if (els.queueWrap.hidden) return;
+  els.queueList.innerHTML = '';
+  state.queue.forEach((e,i) => {
+    const row = document.createElement('div');
+    row.className = 'qrow';
+    const idx = document.createElement('span'); idx.className='qidx'; idx.textContent = String(i+1).padStart(2,'0');
+    const name = document.createElement('span'); name.className='qname';
+    name.title = e.file.name + (e.error ? ' — ' + e.error : '');
+    name.textContent = e.file.name;
+    if (e.dur){ const s=document.createElement('small'); s.textContent = e.dur.toFixed(1)+'s'; name.appendChild(s) }
+    const st = document.createElement('span'); st.className='qst ' + e.status; st.textContent = qStatusText(e);
+    row.append(idx, name, st);
+    if (e.status==='done' && e.url){
+      const dl = document.createElement('a');
+      dl.className='qact dl'; dl.textContent='↓'; dl.href=e.url; dl.download = e.result.name;
+      row.appendChild(dl);
+    } else if (e.status!=='run' && !state.run){
+      const rm = document.createElement('button');
+      rm.className='qact'; rm.type='button'; rm.textContent='✕'; rm.title=t('btnRemove');
+      rm.addEventListener('click', () => removeQueueEntry(i));
+      row.appendChild(rm);
+    }
+    els.queueList.appendChild(row);
+  });
+  const doneN = state.queue.filter(e => e.status==='done').length;
+  els.queueFoot.hidden = !doneN;
+  els.queueSummary.textContent = doneN
+    ? (LANG==='zh' ? `${doneN}/${state.queue.length} 已完成` : `${doneN}/${state.queue.length} done`)
+    : '';
 }
 
 function updateEstFrames(){
@@ -907,9 +1100,11 @@ function refreshUI(){
     const ready = m.deps.every(d => d==='depth' ? !!depthPipe : d==='pose' ? !!poseLm : !!faceLm);
     card.dataset.ready = ready ? '1' : '0';
   }
+  const hasInput = state.srcMode==='batch' ? state.queue.length>0 : !!state.file;
   if (running){ els.btnStart.textContent=t('btnRunning'); els.btnStart.disabled=true }
-  else if (!state.file){ els.btnStart.textContent=t('btnPickFirst'); els.btnStart.disabled=true }
+  else if (!hasInput){ els.btnStart.textContent=t('btnPickFirst'); els.btnStart.disabled=true }
   else if (!modeOk){ els.btnStart.textContent=t('btnWaitModel', missing); els.btnStart.disabled=true }
+  else if (state.srcMode==='batch'){ els.btnStart.textContent=t('btnBatchStart', state.queue.length); els.btnStart.disabled=false }
   else { els.btnStart.textContent=t('btnStart'); els.btnStart.disabled=false }
   els.btnCancel.style.display = running ? 'block' : 'none';
 }
@@ -1087,7 +1282,7 @@ function packDepth(out){
   }catch{ return null }
 }
 
-async function analyze(run, fps){
+async function analyze(run, fps, mode){
   const v = els.vid;
   v.pause(); v.muted = true;
   const total = Math.max(1, Math.round(v.duration*fps));
@@ -1142,7 +1337,7 @@ async function analyze(run, fps){
     }
     frames.push({ t:tt, depth, pose, face });
 
-    renderFrame(frames[i], v, state.mode, els.cmap.value);
+    renderFrame(frames[i], v, mode, els.cmap.value);
     const pct = (i+1)/total*100;
     setPhase(1,'active',pct, `${i+1}/${total}`);
     const speed = (i+1)/((performance.now()-t0)/1000);
@@ -1245,6 +1440,7 @@ els.btnCancel.addEventListener('click', () => {
 });
 
 async function run(){
+  if (state.srcMode === 'batch'){ return runBatch() }
   if (state.run || !state.file) return;
   const file = state.file;
   const fps = +els.fps.value, cmap = els.cmap.value, bitrate = +els.br.value;
@@ -1269,7 +1465,7 @@ async function run(){
     } else {
       state.cache = null; updateCacheHint();
       setPhase(1,'active',0);
-      frames = await analyze(runObj, fps);
+      frames = await analyze(runObj, fps, mode);
       state.cache = { key, frames, complete:true };
     }
     if (runObj.cancelled) throw new Cancelled();
@@ -1323,11 +1519,162 @@ async function run(){
   }
 }
 
+/* ---------------- 批量执行 ---------------- */
+async function runBatch(){
+  if (state.run) return;
+  const todo = state.queue.filter(e => e.status !== 'done');
+  if (!todo.length) return;
+
+  const fps = +els.fps.value, bitrate = +els.br.value;
+  const mode = state.mode;
+  const runObj = state.run = { cancelled:false };
+  els.outCard.hidden = true;
+  setStageBadge('BATCH');
+  refreshUI();
+  const t0 = performance.now();
+  let ok = 0, fail = 0;
+  const modeLabel = document.querySelector(`.mode[data-mode="${mode}"] .mtitle`).textContent;
+  log(t('batchStart', todo.length, modeLabel, fps), 'info');
+
+  for (let i=0; i<todo.length; i++){
+    if (runObj.cancelled) break;
+    const e = todo[i];
+    const label = `[${ok+fail+1}/${todo.length}]`;
+    e.status='run'; e.error=null; renderQueue();
+    try{
+      await prepareVideo(e.file);
+      e.dur = state.meta.duration;
+      const key = cacheKey();
+      let frames = cachePool.get(key);
+      if (frames){
+        setPhase(1,'done',100, t('cacheStat') + ' ' + frames.length);
+        log(`${label} ${t('cacheHit')}`, 'ok');
+      } else {
+        setPhase(1,'active',0);
+        frames = await analyze(runObj, fps, mode);
+        cachePool.set(key, frames);
+        while (cachePool.size > 12) cachePool.delete(cachePool.keys().next().value);
+      }
+      if (runObj.cancelled) throw new Cancelled();
+      setPhase(1,'done',100, frames.length + '');
+      setPhase(2,'active',0);
+      const { blob, ext } = await compose(runObj, frames, fps, mode, els.cmap.value, bitrate);
+      const base = state.meta.name.replace(/\.[^.]+$/, '');
+      if (e.url) URL.revokeObjectURL(e.url);
+      e.url = URL.createObjectURL(blob);
+      e.result = { blob, ext, name: `${base}_${mode}.${ext}` };
+      e.status='done'; ok++;
+      renderQueue();
+      log(t('batchFileDone', ok+fail, todo.length, e.file.name, (blob.size/1048576).toFixed(1)), 'ok');
+    }catch(err){
+      if (runObj.cancelled || err instanceof Cancelled){
+        e.status = e.result ? 'done' : 'wait';
+        renderQueue();
+        break;
+      }
+      e.status='fail'; e.error = err.message ?? String(err); fail++;
+      renderQueue();
+      log(t('batchFileFail', ok+fail, todo.length, e.file.name, e.error), 'warn');
+      try{ els.vid.pause() }catch{}
+      setPhase(1,'idle',0); setPhase(2,'idle',0);
+    }
+  }
+
+  setLive('', false);
+  els.vid.pause(); els.vid.muted=true;
+  setPhase(1,'idle',0); setPhase(2,'idle',0);
+  setStageBadge(runObj.cancelled ? 'PAUSED' : 'DONE ✓');
+  if (runObj.cancelled) log(t('batchCancel', ok), 'warn');
+  else log(t('batchDone', ok, fail, ((performance.now()-t0)/1000).toFixed(1)), ok && !fail ? 'ok' : 'info');
+  renderQueue();
+  state.run = null;
+  refreshUI();
+}
+
+/* ---------------- ZIP（store 模式，零依赖） ---------------- */
+const CRC_TABLE = (() => {
+  const tab = new Uint32Array(256);
+  for (let n=0;n<256;n++){
+    let c = n;
+    for (let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    tab[n] = c >>> 0;
+  }
+  return tab;
+})();
+function crc32(u8){
+  let c = 0xFFFFFFFF;
+  for (let i=0;i<u8.length;i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+async function makeZip(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  const d = new Date();
+  const dosTime = ((d.getHours() & 31) << 11) | ((d.getMinutes() & 63) << 5) | ((d.getSeconds()/2) & 31);
+  const dosDate = (((d.getFullYear()-1980) & 127) << 9) | (((d.getMonth()+1) & 15) << 5) | (d.getDate() & 31);
+  const u16 = v => [v & 255, (v >>> 8) & 255];
+  const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+
+  for (const f of files){
+    const data = new Uint8Array(await f.blob.arrayBuffer());
+    const nameB = enc.encode(f.name);
+    const crc = crc32(data);
+    const local = [
+      ...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0),
+      ...u16(dosTime), ...u16(dosDate), ...u32(crc),
+      ...u32(data.length), ...u32(data.length),
+      ...u16(nameB.length), ...u16(0),
+    ];
+    parts.push(new Uint8Array(local), nameB, data);
+    central.push({ nameB, crc, size:data.length, offset });
+    offset += local.length + nameB.length + data.length;
+  }
+  const cdStart = offset;
+  for (const c of central){
+    const rec = [
+      ...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0),
+      ...u16(dosTime), ...u16(dosDate), ...u32(c.crc),
+      ...u32(c.size), ...u32(c.size),
+      ...u16(c.nameB.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0),
+      ...u32(0), ...u32(c.offset),
+    ];
+    parts.push(new Uint8Array(rec), c.nameB);
+    offset += rec.length + c.nameB.length;
+  }
+  const end = [
+    ...u32(0x06054b50), ...u16(0), ...u16(0),
+    ...u16(files.length), ...u16(files.length),
+    ...u32(offset - cdStart), ...u32(cdStart), ...u16(0),
+  ];
+  parts.push(new Uint8Array(end));
+  return new Blob(parts, { type:'application/zip' });
+}
+
+els.btnZip.addEventListener('click', async () => {
+  try{
+    const done = state.queue.filter(e => e.status==='done' && e.result);
+    if (!done.length){ log(t('zipNone'), 'warn'); return }
+    const stamp = new Date().toISOString().slice(0,10);
+    const blob = await makeZip(done.map(e => ({ name:e.result.name, blob:e.result.blob })));
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `depth-studio-batch-${stamp}.zip`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    log(t('zipDone', done.length, a.download, (blob.size/1048576).toFixed(1)), 'ok');
+  }catch(e){
+    log(t('zipFail', e.message), 'err');
+  }
+});
+
 /* ---------------- 交互绑定 ---------------- */
+els.tabSingle.addEventListener('click', () => setSrcMode('single'));
+els.tabBatch.addEventListener('click', () => setSrcMode('batch'));
 els.drop.addEventListener('click', () => els.fileInput.click());
 els.stageEmpty.addEventListener('click', () => els.fileInput.click());
 els.btnChange.addEventListener('click', () => els.fileInput.click());
-els.fileInput.addEventListener('change', e => { loadFile(e.target.files[0]); e.target.value='' });
+els.fileInput.addEventListener('change', e => { addFiles([...e.target.files]); e.target.value='' });
 
 let dragDepth=0;
 addEventListener('dragover', e => e.preventDefault());
@@ -1335,8 +1682,7 @@ addEventListener('dragenter', e => { e.preventDefault(); dragDepth++; els.drop.c
 addEventListener('dragleave', () => { if (--dragDepth<=0){ dragDepth=0; els.drop.classList.remove('over') } });
 addEventListener('drop', e => {
   e.preventDefault(); dragDepth=0; els.drop.classList.remove('over');
-  const f = e.dataTransfer?.files?.[0];
-  if (f) loadFile(f);
+  addFiles([...(e.dataTransfer?.files ?? [])]);
 });
 
 document.querySelectorAll('.mode').forEach(card => {
