@@ -106,4 +106,4 @@ Code: **MIT**. Models run on demand from their official CDNs under their own lic
 
 ---
 
-由 [BeatAPI](https://github.com/BeatAPI) 维护 · 面向创作者的 AI 视频工具 · [中文文档](README.zh-CN.md)
+由 [BeatAPI](https://github.com/BeatAPI) 维护 · [beatapi.io](https://beatapi.io) — 音乐视频与产品广告的异步 AI 视频 API · [中文文档](README.zh-CN.md)

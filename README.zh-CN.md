@@ -106,4 +106,4 @@ python3 serve.py        # Windows: start-server.bat · macOS: start-server.comma
 
 ---
 
-由 [BeatAPI](https://github.com/BeatAPI) 维护 · 面向创作者的 AI 视频工具 · [English](README.md)
+由 [BeatAPI](https://github.com/BeatAPI) 维护 · [beatapi.io](https://beatapi.io) — 音乐视频与产品广告的异步 AI 视频 API · [English](README.md)
