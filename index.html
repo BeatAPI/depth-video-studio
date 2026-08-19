@@ -1423,8 +1423,19 @@ async function compose(run, frames, fps, mode, cmap, bitrate){
   }
 
   await new Promise(done => {
-    const finish = () => { v.removeEventListener('ended', finish); done() };
+    const finish = () => {
+      v.removeEventListener('ended', finish);
+      v.removeEventListener('pause', finishAtBoundary);
+      done();
+    };
+    const finishAtBoundary = () => {
+      // Some Chromium builds pause on the final decoded frame without firing
+      // `ended`; treat the measured duration boundary as the same terminal
+      // condition so batch exports cannot hang after the last frame.
+      if (v.ended || (Number.isFinite(v.duration) && v.currentTime >= v.duration - Math.max(0.05, 1 / fps))) finish();
+    };
     v.addEventListener('ended', finish);
+    v.addEventListener('pause', finishAtBoundary);
     const tick = () => {
       if (run.cancelled || v.ended){ finish(); return }
       const idx = Math.min(frames.length-1, Math.max(0, Math.round(v.currentTime*fps)));

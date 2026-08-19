@@ -31,7 +31,7 @@ A 12-second vertical fitness clip in, motion-control MP4s out — one analysis p
 | Chrome/Edge + WebGPU (integrated) | ~30–60 s | real-time |
 | WASM fallback | 1–5 min | real-time |
 
-Switching modes reuses the analysis cache — export depth, then the skeleton, each additional export costs only the clip's real-time duration.
+Switching modes reuses the analysis cache — export depth, then the skeleton, each additional export costs only the clip's real-time duration. ZIP archives carry UTF-8 filenames (fine in Finder and Windows Explorer); if you extract from a terminal, prefer `ditto -x -k file.zip out/` or 7-Zip — the ancient Info-ZIP `unzip` mangles non-ASCII names.
 
 ## Why this exists
 
