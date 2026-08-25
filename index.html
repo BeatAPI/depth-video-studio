@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' blob: https://cdn.jsdelivr.net https://storage.googleapis.com https://huggingface.co https://*.huggingface.co https://hf-mirror.com https://*.hf-mirror.com https://*.hf.co https://*.xethub.hf.co; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">
+<meta name="referrer" content="no-referrer">
 <meta name="description" content="Depth Video Studio — turn any video into depth maps, pose skeletons and 478-point face clouds for AI motion control (Seedance, Kling, Runway). 100% in-browser, no install, no upload.">
 <title>深度视频工作台 · Depth Studio</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23e5793f' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23e5793f'/%3E%3C/svg%3E">
@@ -834,14 +836,15 @@ const MODES = {
 
 /* ---------------- CDN 地址 ---------------- */
 const TF_URLS = [
-  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3',
-  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm',
+  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1',
+  'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm',
 ];
-const MP_JS  = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/vision_bundle.mjs';
-const MP_WASM= 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10/wasm';
-const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task';
+const MP_JS  = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs';
+const MP_WASM= 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
+const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task';
 const FACE_MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 const DEPTH_MODEL = 'onnx-community/depth-anything-v2-small';
+const DEPTH_MODEL_REVISION = '4472b7362082ad9968fee890ca0f1e5aca36b93d';
 
 function setChip(name, status, tip=''){
   const c = els.chips[name]; if (!c) return;
@@ -898,7 +901,7 @@ async function loadDepth(retry=false){
         try{
           tf.env.remoteHost = host;
           depthPipe = await tf.pipeline('depth-estimation', DEPTH_MODEL, {
-            device: c.device, dtype: c.dtype,
+            device: c.device, dtype: c.dtype, revision: DEPTH_MODEL_REVISION,
             progress_callback: p => dlProgress(LANG==='zh'?'深度模型':'depth model', p),
           });
           log(t('depthOk', tag), 'ok');
