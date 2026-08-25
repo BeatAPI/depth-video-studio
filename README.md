@@ -89,6 +89,14 @@ Also pairs well with Kling/Vidu/Wan motion control, Runway-style references, and
 
 All inference runs locally in your browser. There is no backend, no analytics, and no upload — the entire app is one readable `index.html`, audit it yourself.
 
+Browser runtimes and model assets are pinned to exact versions or revisions. An
+in-document Content Security Policy restricts scripts, fonts, and model downloads
+to the documented providers, and the Pages workflow runs
+[`scripts/check-security.mjs`](scripts/check-security.mjs) before deployment. The
+hosted demo still downloads those public runtimes and model files on first use;
+the selected video itself stays in the browser. See [SECURITY.md](SECURITY.md) for
+the trust boundary and reporting process.
+
 ## Roadmap
 
 - [x] Batch queue — up to 10 clips, one click, ZIP download

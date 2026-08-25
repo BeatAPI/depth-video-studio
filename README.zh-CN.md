@@ -89,6 +89,8 @@ python3 serve.py        # Windows: start-server.bat · macOS: start-server.comma
 
 所有推理在浏览器本地完成：无后端、无统计、无上传——整个应用就是一个可读的 `index.html`，欢迎自行审计。
 
+浏览器运行库和模型资源均固定到精确版本或提交。页面内置内容安全策略，只允许从文档列明的服务商加载脚本、字体和模型；GitHub Pages 在部署前还会运行 [`scripts/check-security.mjs`](scripts/check-security.mjs) 检查这些约束。在线版首次使用仍需下载公开运行库和模型文件，但用户选择的视频本身始终留在浏览器中。信任边界与漏洞反馈方式见 [SECURITY.md](SECURITY.md)。
+
 ## 路线图
 
 - [x] 批量队列 — 单次最多 10 个，一键 ZIP 下载
